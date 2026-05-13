@@ -36,11 +36,7 @@ function App() {
                 todoList={todoList}
                 onCompleteTodo={completeTodo}
                 onUpdateTodo={updateTodo}
-            /><TodoList
-            todoList={todoList}
-            onCompleteTodo={completeTodo}
-            onUpdateTodo={updateTodo}
-        />
+            />
         </div>
     );
 }
