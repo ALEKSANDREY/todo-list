@@ -1,4 +1,4 @@
-import TodoListItem from './TodoListItem.jsx'
+import TodoListItem from '../TodoListItem.jsx'
 
 function TodoList({ todoList, onCompleteTodo }) {
     const filteredTodoList = todoList.filter(todo => !todo.isCompleted)
