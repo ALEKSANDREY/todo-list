@@ -57,7 +57,7 @@ function TodosPage({ token }) {
 
     async function completeTodo(id) {
         const originalTodo = todoList.find(todo => todo.id === id);
-        setTodoList(todoList.map(todo =>
+        setTodoList(prev => prev.map(todo =>
             todo.id === id ? { ...todo, isCompleted: true } : todo
         ));
         try {
@@ -72,7 +72,7 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to complete todo');
         } catch (err) {
-            setTodoList(todoList.map(todo =>
+            setTodoList(prev => prev.map(todo =>
                 todo.id === id ? originalTodo : todo
             ));
             setError(err.message);
@@ -81,7 +81,7 @@ function TodosPage({ token }) {
 
     async function updateTodo(editedTodo) {
         const originalTodo = todoList.find(todo => todo.id === editedTodo.id);
-        setTodoList(todoList.map(todo =>
+        setTodoList(prev => prev.map(todo =>
             todo.id === editedTodo.id ? { ...editedTodo } : todo
         ));
         try {
@@ -96,7 +96,7 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to update todo');
         } catch (err) {
-            setTodoList(todoList.map(todo =>
+            setTodoList(prev => prev.map(todo =>
                 todo.id === editedTodo.id ? originalTodo : todo
             ));
             setError(err.message);
