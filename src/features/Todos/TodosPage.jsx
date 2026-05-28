@@ -25,12 +25,10 @@ function TodosPage({ token }) {
     // --- Part 3 Optimization Hook Practice ---
     // Reviewer Note: Tracks cache states through mutations to avoid recalculating useMemo list
     const invalidateCache = useCallback(() => {
-        console.log("Invalidating memo cache after todo mutation");
         setDataVersion(prev => prev + 1);
     }, []);
 
-    // --- Part 1 & 2: Centralized Fetch Handler with URLSearchParams ---
-    // Reviewer Note: Extracted to a stable callback reference to prevent dependency infinite loops
+    //  Extracted to a stable callback reference to prevent dependency infinite loops
     const fetchTodos = useCallback(async () => {
         if (!token) return;
         setIsTodoListLoading(true);

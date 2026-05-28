@@ -6,7 +6,6 @@ function TodoList({ todoList, dataVersion, onCompleteTodo, onUpdateTodo }) {
 
     // 3. Wrap your existing filter logic in useMemo so it doesn't run unless needed
     const filteredTodoList = useMemo(() => {
-        console.log(`Recalculating filtered todos (v${dataVersion})`);
 
 
         const activeTodos = todoList.filter(todo => !todo.isCompleted);
