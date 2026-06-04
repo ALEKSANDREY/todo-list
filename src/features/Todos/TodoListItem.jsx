@@ -50,7 +50,17 @@ function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
                             onChange={() => onCompleteTodo(todo.id)}
                             disabled={todo.isOptimisticPending} // FIX: Prevents clicking until server returns real data!
                         />
-                        <span onClick={() => setIsEditing(true)}>{todo.title}</span>
+                        {/* FIX: Prevent entering edit mode if the item is an optimistic row pending server validation */}
+                        <span
+                            onClick={() => !todo.isOptimisticPending && setIsEditing(true)}
+                            style={{
+                                cursor: todo.isOptimisticPending ? 'not-allowed' : 'pointer',
+                                opacity: todo.isOptimisticPending ? 0.6 : 1,
+                                fontStyle: todo.isOptimisticPending ? 'italic' : 'normal'
+                            }}
+                        >
+                            {todo.title} {todo.isOptimisticPending && '(Saving...)'}
+                        </span>
                     </>
                 )}
             </form>
