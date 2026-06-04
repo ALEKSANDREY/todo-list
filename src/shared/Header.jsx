@@ -1,17 +1,14 @@
-function Header({ token, onSetToken, onSetEmail }) {
-    function handleLogout() {
-        onSetToken('');
-        onSetEmail('');
-    }
+import { useAuth } from '../contexts/AuthContext.jsx';
+import Logoff from './Logoff.jsx'; // or wherever your Logoff button lives
 
+function Header() {
+    const { isAuthenticated, email } = useAuth();
     return (
         <header>
             <h1>Todo List</h1>
-            {token && (
-                <button onClick={handleLogout}>Log Out</button>
-            )}
+            {isAuthenticated && <p>Welcome, {email}!</p>}
+            <Logoff />
         </header>
     );
 }
-
-export default Header;  
+export default Header;
