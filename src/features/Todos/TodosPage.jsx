@@ -81,7 +81,8 @@ function TodosPage({ token }) {
         const newTodo = {
             id: Date.now(),
             title: todoTitle,
-            isCompleted: false
+            isCompleted: false,
+            isOptimisticPending: true
         };
         setTodoList(previous => [newTodo, ...previous]);
         try {
@@ -107,9 +108,12 @@ function TodosPage({ token }) {
 
     async function completeTodo(id) {
         const originalTodo = todoList.find(todo => todo.id === id);
+
+        // Optimistic Update
         setTodoList(prev => prev.map(todo =>
             todo.id === id ? { ...todo, isCompleted: true } : todo
         ));
+
         try {
             const response = await fetch(`/api/tasks/${id}`, {
                 method: 'PATCH',
@@ -122,8 +126,9 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to complete todo');
 
-            invalidateCache(); // Part 3: Force update list version on completion switch
+            invalidateCache();
         } catch (err) {
+            // FIX 1: Safe functional rollback targeting ONLY the single failed item
             setTodoList(prev => prev.map(todo =>
                 todo.id === id ? originalTodo : todo
             ));
@@ -133,9 +138,12 @@ function TodosPage({ token }) {
 
     async function updateTodo(editedTodo) {
         const originalTodo = todoList.find(todo => todo.id === editedTodo.id);
+
+        // Optimistic Update
         setTodoList(prev => prev.map(todo =>
             todo.id === editedTodo.id ? { ...editedTodo } : todo
         ));
+
         try {
             const response = await fetch(`/api/tasks/${editedTodo.id}`, {
                 method: 'PATCH',
@@ -148,8 +156,9 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to update todo');
 
-            invalidateCache(); // Part 3: Force update list version on content changes
+            invalidateCache();
         } catch (err) {
+            // FIX 1: Safe functional rollback targeting ONLY the single failed item
             setTodoList(prev => prev.map(todo =>
                 todo.id === editedTodo.id ? originalTodo : todo
             ));

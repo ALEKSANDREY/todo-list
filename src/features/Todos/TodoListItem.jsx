@@ -48,6 +48,7 @@ function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
                             type="checkbox"
                             checked={todo.isCompleted}
                             onChange={() => onCompleteTodo(todo.id)}
+                            disabled={todo.isOptimisticPending} // FIX: Prevents clicking until server returns real data!
                         />
                         <span onClick={() => setIsEditing(true)}>{todo.title}</span>
                     </>
