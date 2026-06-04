@@ -23,7 +23,8 @@ function TodoList({ todoList, dataVersion, onCompleteTodo, onUpdateTodo }) {
             <p>Add todo above to get started</p>
         ) : (
             <ul>
-                {filteredTodoList.todos.map(todo => (
+                //Map directly over the list so completed tasks stay visible!
+                {todoList.map((todo) => (
                     <TodoListItem
                         key={todo.id}
                         todo={todo}
