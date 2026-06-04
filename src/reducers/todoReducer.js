@@ -38,13 +38,21 @@ export function todoReducer(state, action) {
             return { ...state, isTodoListLoading: false, todoList: action.payload.todos, filterError: '' };
 
         case TODO_ACTIONS.FETCH_ERROR:
+            // FIX 1: Inspect the payload flag to split general vs filter error states cleanly
+            if (action.payload.isFilterError) {
+                return { ...state, isTodoListLoading: false, filterError: action.payload.message };
+            }
             return { ...state, isTodoListLoading: false, error: action.payload.message };
 
         case TODO_ACTIONS.ADD_TODO_START:
             return { ...state, todoList: [action.payload.todo, ...state.todoList] };
 
         case TODO_ACTIONS.ADD_TODO_SUCCESS:
-            return { ...state, todoList: state.todoList.map(t => t.id === action.payload.tempId ? action.payload.todo : t) };
+            return {
+                ...state,
+                todoList: state.todoList.map(t => t.id === action.payload.tempId ? action.payload.todo : t),
+                dataVersion: state.dataVersion + 1 // FIX 3: Increment on successful creation
+            };
 
         case TODO_ACTIONS.ADD_TODO_ERROR:
             return { ...state, todoList: state.todoList.filter(t => t.id !== action.payload.tempId), error: action.payload.message };
@@ -52,30 +60,33 @@ export function todoReducer(state, action) {
         case TODO_ACTIONS.COMPLETE_TODO_START:
             return { ...state, todoList: state.todoList.map(t => t.id === action.payload.id ? { ...t, isCompleted: true } : t) };
 
+        // FIX 2 & 3: Handle complete success action tracker and increment version cache counter
+        case TODO_ACTIONS.COMPLETE_TODO_SUCCESS:
+            return { ...state, dataVersion: state.dataVersion + 1 };
+
         case TODO_ACTIONS.COMPLETE_TODO_ERROR:
             return { ...state, todoList: state.todoList.map(t => t.id === action.payload.id ? action.payload.originalTodo : t), error: action.payload.message };
 
         case TODO_ACTIONS.UPDATE_TODO_START:
             return { ...state, todoList: state.todoList.map(t => t.id === action.payload.todo.id ? action.payload.todo : t) };
 
+        // FIX 2 & 3: Handle inline edit text success action tracker and increment version cache counter
+        case TODO_ACTIONS.UPDATE_TODO_SUCCESS:
+            return { ...state, dataVersion: state.dataVersion + 1 };
+
         case TODO_ACTIONS.UPDATE_TODO_ERROR:
             return { ...state, todoList: state.todoList.map(t => t.id === action.payload.id ? action.payload.originalTodo : t), error: action.payload.message };
 
         case TODO_ACTIONS.SET_SORT:
             return { ...state, sortBy: action.payload.sortBy, sortDirection: action.payload.sortDirection };
-
         case TODO_ACTIONS.SET_FILTER:
             return { ...state, filterTerm: action.payload.filterTerm };
-
         case TODO_ACTIONS.CLEAR_ERROR:
             return { ...state, error: '' };
-
         case TODO_ACTIONS.CLEAR_FILTER_ERROR:
             return { ...state, filterError: '' };
-
         case TODO_ACTIONS.RESET_FILTERS:
             return { ...state, filterTerm: '', sortBy: 'creationDate', sortDirection: 'desc', filterError: '' };
-
         default:
             throw new Error(`Unknown action type: ${action.type}`);
     }

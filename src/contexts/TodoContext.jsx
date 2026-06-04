@@ -40,11 +40,15 @@ export function TodoProvider({ children }) {
             const data = await response.json();
             dispatch({ type: TODO_ACTIONS.FETCH_SUCCESS, payload: { todos: data.tasks } });
         } catch (err) {
-            if (debouncedFilterTerm || state.sortBy !== 'creationDate' || state.sortDirection !== 'desc') {
-                dispatch({ type: TODO_ACTIONS.FETCH_ERROR, payload: { message: `Error filtering/sorting todos: ${err.message}` } });
-            } else {
-                dispatch({ type: TODO_ACTIONS.FETCH_ERROR, payload: { message: `Error fetching todos: ${err.message}` } });
-            }
+            // FIX 1: Evaluate if query states are active, then bundle the isFilterError boolean indicator flag
+            const isFilterActive = debouncedFilterTerm || state.sortBy !== 'creationDate' || state.sortDirection !== 'desc';
+            dispatch({
+                type: TODO_ACTIONS.FETCH_ERROR,
+                payload: {
+                    message: isFilterActive ? `Error filtering/sorting todos: ${err.message}` : `Error fetching todos: ${err.message}`,
+                    isFilterError: isFilterActive
+                }
+            });
         }
     }, [token, state.sortBy, state.sortDirection, debouncedFilterTerm]);
 
@@ -83,6 +87,9 @@ export function TodoProvider({ children }) {
                 body: JSON.stringify({ isCompleted: true, createdAt: originalTodo.createdAt }),
             });
             if (!response.ok) throw new Error('Failed to complete todo');
+
+            // FIX 2: Dispatch completion success tracking to cycle version cache indicators
+            dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_SUCCESS, payload: { id } });
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_ERROR, payload: { id, originalTodo, message: err.message } });
         }
@@ -100,6 +107,9 @@ export function TodoProvider({ children }) {
                 body: JSON.stringify({ title: editedTodo.title, isCompleted: editedTodo.isCompleted, createdAt: originalTodo.createdAt }),
             });
             if (!response.ok) throw new Error('Failed to update todo');
+
+            // FIX 2: Dispatch edit update success tracking to cycle version cache indicators
+            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { id: editedTodo.id } });
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.UPDATE_TODO_ERROR, payload: { id: editedTodo.id, originalTodo, message: err.message } });
         }
