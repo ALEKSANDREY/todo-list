@@ -1,50 +1,17 @@
-import { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import { useState, useEffect, useCallback } from 'react';
 import TodoForm from './TodoForm.jsx';
 import TodoList from './TodoList/TodoList.jsx';
-import SortBy from '../../shared/SortBy.jsx';
-import FilterInput from '../../shared/FilterInput.jsx';
-import useDebounce from '../../utils/useDebounce.js';
 
 function TodosPage({ token }) {
     const [todoList, setTodoList] = useState([]);
     const [error, setError] = useState('');
     const [isTodoListLoading, setIsTodoListLoading] = useState(false);
 
-    // --- Part 1, 2, & 4: New Sorting, Filtering, and Error States ---
-    const [sortBy, setSortBy] = useState('creationDate');
-    const [sortDirection, setSortDirection] = useState('desc');
-    const [filterTerm, setFilterTerm] = useState('');
-    const [filterError, setFilterError] = useState('');
-
-    // --- Part 3: Data Version State for Cache Invalidation ---
-    const [dataVersion, setDataVersion] = useState(0);
-
-    // Delay filter term to throttle network hits on keyboard typing
-    const debouncedFilterTerm = useDebounce(filterTerm, 300);
-
-    // --- Part 3 Optimization Hook Practice ---
-    // Reviewer Note: Tracks cache states through mutations to avoid recalculating useMemo list
-    const invalidateCache = useCallback(() => {
-        setDataVersion(prev => prev + 1);
-    }, []);
-
-    //  Extracted to a stable callback reference to prevent dependency infinite loops
     const fetchTodos = useCallback(async () => {
         if (!token) return;
         setIsTodoListLoading(true);
-
-        // Assemble query params safely instead of using string concatenation
-        const paramsObject = {
-            sortBy,
-            sortDirection
-        };
-        if (debouncedFilterTerm) {
-            paramsObject.find = debouncedFilterTerm;
-        }
-        const params = new URLSearchParams(paramsObject);
-
         try {
-            const response = await fetch(`/api/tasks?${params}`, {
+            const response = await fetch('/api/tasks', {
                 headers: { 'X-CSRF-TOKEN': token },
                 credentials: 'include'
             });
@@ -53,35 +20,23 @@ function TodosPage({ token }) {
 
             const data = await response.json();
             setTodoList(data.tasks);
-            setFilterError(''); // Part 4: Clear filter error on successful fetch
         } catch (err) {
-            // Part 4: Differentiate error messaging structure based on query settings
-            if (debouncedFilterTerm || sortBy !== 'creationDate' || sortDirection !== 'desc') {
-                setFilterError(`Error filtering/sorting todos: ${err.message}`);
-            } else {
-                // FIXED: Main fetch error message formatting with strict instruction prefix matching
-                setError(`Error fetching todos: ${err.message}`);
-            }
+            setError(`Error fetching todos: ${err.message}`);
         } finally {
             setIsTodoListLoading(false);
         }
-    }, [token, sortBy, sortDirection, debouncedFilterTerm]);
+    }, [token]);
 
-    // Triggers fetch requests automatically when dependencies change
     useEffect(() => {
         fetchTodos();
     }, [fetchTodos]);
-
-    // Clean handler for user input mutations
-    const handleFilterChange = (newTerm) => {
-        setFilterTerm(newTerm);
-    };
 
     async function addTodo(todoTitle) {
         const newTodo = {
             id: Date.now(),
             title: todoTitle,
-            isCompleted: false
+            isCompleted: false,
+            isOptimisticPending: true // Set flag on add
         };
         setTodoList(previous => [newTodo, ...previous]);
         try {
@@ -96,9 +51,9 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to add todo');
             const data = await response.json();
-            setTodoList(previous => [data, ...previous.filter(t => t.id !== newTodo.id)]);
 
-            invalidateCache(); // Part 3: Force update list version on creation
+            // Success: replace with server data (which has no pending flag)
+            setTodoList(previous => previous.map(t => t.id === newTodo.id ? data : t));
         } catch (err) {
             setTodoList(previous => previous.filter(t => t.id !== newTodo.id));
             setError(err.message);
@@ -107,8 +62,10 @@ function TodosPage({ token }) {
 
     async function completeTodo(id) {
         const originalTodo = todoList.find(todo => todo.id === id);
+
+        // Optimistic Update: Mark completed AND set pending flag to true
         setTodoList(prev => prev.map(todo =>
-            todo.id === id ? { ...todo, isCompleted: true } : todo
+            todo.id === id ? { ...todo, isCompleted: true, isOptimisticPending: true } : todo
         ));
         try {
             const response = await fetch(`/api/tasks/${id}`, {
@@ -122,19 +79,23 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to complete todo');
 
-            invalidateCache(); // Part 3: Force update list version on completion switch
-        } catch (err) {
+            // Success: turn off pending flag
             setTodoList(prev => prev.map(todo =>
-                todo.id === id ? originalTodo : todo
+                todo.id === id ? { ...todo, isOptimisticPending: false } : todo
             ));
+        } catch (err) {
+            // Rollback completely on failure
+            setTodoList(prev => prev.map(todo => todo.id === id ? originalTodo : todo));
             setError(err.message);
         }
     }
 
     async function updateTodo(editedTodo) {
         const originalTodo = todoList.find(todo => todo.id === editedTodo.id);
+
+        // Optimistic Update: Apply edited text AND set pending flag to true
         setTodoList(prev => prev.map(todo =>
-            todo.id === editedTodo.id ? { ...editedTodo } : todo
+            todo.id === editedTodo.id ? { ...editedTodo, isOptimisticPending: true } : todo
         ));
         try {
             const response = await fetch(`/api/tasks/${editedTodo.id}`, {
@@ -148,18 +109,19 @@ function TodosPage({ token }) {
             });
             if (!response.ok) throw new Error('Failed to update todo');
 
-            invalidateCache(); // Part 3: Force update list version on content changes
-        } catch (err) {
+            // Success: turn off pending flag
             setTodoList(prev => prev.map(todo =>
-                todo.id === editedTodo.id ? originalTodo : todo
+                todo.id === editedTodo.id ? { ...todo, isOptimisticPending: false } : todo
             ));
+        } catch (err) {
+            // Rollback on failure
+            setTodoList(prev => prev.map(todo => todo.id === editedTodo.id ? originalTodo : todo));
             setError(err.message);
         }
     }
 
     return (
         <div>
-            {/* Standard Global Errors */}
             {error && (
                 <div>
                     <p>{error}</p>
@@ -167,41 +129,12 @@ function TodosPage({ token }) {
                 </div>
             )}
 
-            {/* Part 1 & 2 Inputs layout placement */}
-            <SortBy
-                sortBy={sortBy}
-                sortDirection={sortDirection}
-                onSortByChange={setSortBy}
-                onSortDirectionChange={setSortDirection}
-            />
-
-            <FilterInput
-                filterTerm={filterTerm}
-                onFilterChange={handleFilterChange}
-            />
-
-            {/* Part 4: Advanced Search Error Display Box */}
-            {filterError && (
-                <div className="filter-error-container">
-                    <p style={{ color: 'red' }}>{filterError}</p>
-                    <button onClick={() => setFilterError('')}>Clear Filter Error</button>
-                    <button onClick={() => {
-                        setFilterTerm('');
-                        setSortBy('creationDate');
-                        setSortDirection('desc');
-                        setFilterError('');
-                    }}>Reset Filters</button>
-                </div>
-            )}
-
             {isTodoListLoading && <p>Loading...</p>}
 
             <TodoForm onAddTodo={addTodo} />
 
-            {/* Part 3: Passing layout cache variables downward */}
             <TodoList
                 todoList={todoList}
-                dataVersion={dataVersion}
                 onCompleteTodo={completeTodo}
                 onUpdateTodo={updateTodo}
             />
