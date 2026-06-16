@@ -28,7 +28,6 @@ function TodosPage() {
 
     return (
         <div>
-            {/* Standard Global Errors */}
             {error && (
                 <div>
                     <p>{error}</p>
@@ -66,7 +65,6 @@ function TodosPage() {
             {/* Passing optimized list state configurations downward */}
             <TodoList
                 todoList={todoList}
-                dataVersion={dataVersion}
                 onCompleteTodo={completeTodo}
                 onUpdateTodo={updateTodo}
             />
