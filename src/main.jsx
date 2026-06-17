@@ -1,13 +1,19 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router'; // React Router v7 import
 import './index.css';
-import { AuthProvider } from './contexts/AuthContext.jsx'; // Import your auth wrapper
+import App from './App.jsx';
+import { AuthProvider } from './contexts/AuthContext';
+import { TodoProvider } from './contexts/TodoContext'; // From week 9 refactor
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <AuthProvider>
-            <App />
-        </AuthProvider>
-    </React.StrictMode>
+createRoot(document.getElementById('root')).render(
+    <StrictMode>
+        <BrowserRouter>
+            <AuthProvider>
+                <TodoProvider>
+                    <App />
+                </TodoProvider>
+            </AuthProvider>
+        </BrowserRouter>
+    </StrictMode>
 );

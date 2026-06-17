@@ -1,39 +1,40 @@
-import React, { useMemo } from 'react'; // 1. Add the useMemo import
+import { useMemo } from 'react';
 import TodoListItem from '../TodoListItem.jsx';
 
-// 2. Add dataVersion to the props coming from the parent component
-function TodoList({ todoList, dataVersion, onCompleteTodo, onUpdateTodo }) {
+function TodoList({ todoList, onCompleteTodo, onUpdateTodo, statusFilter = 'all' }) {
 
-    // 3. Wrap your existing filter logic in useMemo so it doesn't run unless needed
     const filteredTodoList = useMemo(() => {
+        let tasks = [...todoList];
 
+        // Evaluate URL parameter switches cleanly
+        if (statusFilter === 'completed') {
+            tasks = tasks.filter(t => t.isCompleted);
+        } else if (statusFilter === 'active') {
+            tasks = tasks.filter(t => !t.isCompleted);
+        }
 
-        const activeTodos = todoList.filter(todo => !todo.isCompleted);
+        return tasks;
+    }, [todoList, statusFilter]);
 
-        // The assignment requires returning an object with version and todos
-        return {
-            version: dataVersion,
-            todos: activeTodos
-        };
-    }, [todoList, dataVersion]); // Recalculate if the list changes or version updates
+    const getEmptyMessage = () => {
+        if (statusFilter === 'completed') return 'No completed todos yet.';
+        if (statusFilter === 'active') return 'Clean slate! No active remaining tasks.';
+        return 'Your task collection is empty. Type above to add one!';
+    };
 
-    // 4. Update the JSX to use filteredTodoList.todos instead of filteredTodoList
-    return (
-        filteredTodoList.todos.length === 0 ? (
-            <p>Add todo above to get started</p>
-        ) : (
-            <ul>
-                //Map directly over the list so completed tasks stay visible!
-                {todoList.map((todo) => (
-                    <TodoListItem
-                        key={todo.id}
-                        todo={todo}
-                        onCompleteTodo={onCompleteTodo}
-                        onUpdateTodo={onUpdateTodo}
-                    />
-                ))}
-            </ul>
-        )
+    return filteredTodoList.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>{getEmptyMessage()}</p>
+    ) : (
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+            {filteredTodoList.map((todo) => (
+                <TodoListItem
+                    key={todo.id}
+                    todo={todo}
+                    onCompleteTodo={onCompleteTodo}
+                    onUpdateTodo={onUpdateTodo}
+                />
+            ))}
+        </ul>
     );
 }
 
