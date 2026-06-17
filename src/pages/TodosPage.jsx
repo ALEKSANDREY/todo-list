@@ -3,22 +3,22 @@ import { useSearchParams } from 'react-router';
 import { useTodo } from '../contexts/TodoContext';
 import StatusFilter from '../shared/StatusFilter';
 import FilterInput from '../shared/FilterInput';
-import SortBy from '../shared/SortBy'; // Verify this import path matches your project structure
+import SortBy from '../shared/SortBy';
+import TodoForm from "../features/Todos/TodoForm";// THE FIX: Import the missing TodoForm component
 import TodoList from '../features/Todos/TodoList/TodoList';
 
 function TodosPage() {
-    // 1. Extract all required actions and sorting values directly out of context
     const {
         filterTerm,
         setFilterTerm,
         sortBy,
         sortDirection,
         setSort,
+        addTodo, // THE FIX: Extract addTodo from context
         completeTodo,
         updateTodo
     } = useTodo();
 
-    // 2. Read the status parameter via useSearchParams to drive URL-filtering
     const [searchParams] = useSearchParams();
     const statusFilter = searchParams.get('status') || 'all';
 
@@ -26,13 +26,7 @@ function TodosPage() {
         <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
             <h2>My Tasks</h2>
 
-            <StatusFilter />
-
-            <div style={{ margin: '15px 0' }}>
-                <FilterInput filterTerm={filterTerm} onFilterChange={setFilterTerm} />
-            </div>
-
-            {/* 3. Include SortBy component above the todo list */}
+            {/* THE FIX: SortBy component moved to the very top layout position per spec */}
             <div style={{ margin: '15px 0' }}>
                 <SortBy
                     sortBy={sortBy}
@@ -42,7 +36,17 @@ function TodosPage() {
                 />
             </div>
 
-            {/* 4. Pass statusFilter and actions directly into TodoList */}
+            <StatusFilter />
+
+            <div style={{ margin: '15px 0' }}>
+                <FilterInput filterTerm={filterTerm} onFilterChange={setFilterTerm} />
+            </div>
+
+            {/* THE FIX: Render the TodoForm component above the task list mapping container */}
+            <div style={{ margin: '15px 0' }}>
+                <TodoForm onAddTodo={addTodo} />
+            </div>
+
             <TodoList
                 statusFilter={statusFilter}
                 onCompleteTodo={completeTodo}
