@@ -6,7 +6,12 @@ function RequireAuth({ children }) {
     const location = useLocation();
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return (
+            <p style={{ textAlign: 'center' }}>
+                Verifying credentials...
+                <Navigate to="/login" state={{ from: location }} replace />
+            </p>
+        );
     }
 
     return children;

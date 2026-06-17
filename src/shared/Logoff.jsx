@@ -11,7 +11,7 @@ function Logoff() {
         if (!hasLoggedOut.current) {
             hasLoggedOut.current = true;
             logout();
-            navigate('/login', { replace: true });
+            navigate('/login');
         }
     }, [logout, navigate]);
 
