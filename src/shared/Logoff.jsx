@@ -1,12 +1,17 @@
-import { useAuth } from '../contexts/AuthContext.jsx';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router'; // 1. Add this import
+import { useAuth } from '../contexts/AuthContext';
 
 function Logoff() {
-    const { isAuthenticated, logout } = useAuth();
+    const { logout } = useAuth();
+    const navigate = useNavigate(); // 2. Initialize the navigation engine
 
-    if (!isAuthenticated) return null;
+    useEffect(() => {
+        logout();
+        navigate('/login'); // 3. Redirect the user instantly after logging out
+    }, [logout, navigate]);
 
-    return (
-        <button onClick={logout}>Log Off</button>
-    );
+    return <p style={{ textAlign: 'center' }}>Logging you out securely...</p>;
 }
+
 export default Logoff;
