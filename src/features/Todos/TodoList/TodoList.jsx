@@ -1,8 +1,12 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import TodoListItem from '../TodoListItem.jsx';
+import { useTodo } from '../../../contexts/TodoContext';
 
-function TodoList({ todoList, onCompleteTodo, onUpdateTodo, statusFilter = 'all' }) {
+function TodoList({ statusFilter = 'all', onCompleteTodo, onUpdateTodo }) {
+    // 1. Consume todoList and dataVersion from context per Step 19 guidelines
+    const { todoList, dataVersion } = useTodo();
 
+    // 2. Track and memoize the filtered array, including dataVersion as a dependency
     const filteredTodoList = useMemo(() => {
         let tasks = [...todoList];
 
@@ -14,13 +18,16 @@ function TodoList({ todoList, onCompleteTodo, onUpdateTodo, statusFilter = 'all'
         }
 
         return tasks;
-    }, [todoList, statusFilter]);
+    }, [todoList, statusFilter, dataVersion]); // Included dataVersion here
 
     const getEmptyMessage = () => {
         if (statusFilter === 'completed') return 'No completed todos yet.';
         if (statusFilter === 'active') return 'Clean slate! No active remaining tasks.';
         return 'Your task collection is empty. Type above to add one!';
     };
+
+    // 3. Log the cache dataVersion on every render execution to demonstrate cache updates
+    console.log(`Rendering TodoList cache version: ${dataVersion}`);
 
     return filteredTodoList.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>{getEmptyMessage()}</p>
