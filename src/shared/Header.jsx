@@ -13,7 +13,6 @@ function Header() {
             {/* Inject the navigation links portal right here */}
             <Navigation />
 
-            <Logoff />
         </header>
     );
 }
