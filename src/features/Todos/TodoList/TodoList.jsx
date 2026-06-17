@@ -26,9 +26,6 @@ function TodoList({ statusFilter = 'all', onCompleteTodo, onUpdateTodo }) {
         return 'Your task collection is empty. Type above to add one!';
     };
 
-    // 3. Log the cache dataVersion on every render execution to demonstrate cache updates
-    console.log(`Rendering TodoList cache version: ${dataVersion}`);
-
     return filteredTodoList.length === 0 ? (
         <p style={{ textAlign: 'center', color: '#666', fontStyle: 'italic' }}>{getEmptyMessage()}</p>
     ) : (
