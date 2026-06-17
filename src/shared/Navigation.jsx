@@ -16,8 +16,9 @@ function Navigation() {
                 <li><NavLink to="/about" style={navLinkStyle}>About</NavLink></li>
                 {isAuthenticated && (
                     <>
-                        <li><NavLink to="/todos" style={navLinkStyle}>Todos</NavLink></li>
+                        <li><NavLink to="/" style={navLinkStyle}>Todos</NavLink></li>
                         <li><NavLink to="/profile" style={navLinkStyle}>Profile</NavLink></li>
+                        <li><NavLink to="/logoff" style={navLinkStyle}>Log Out</NavLink></li>
                     </>
                 )}
                 {!isAuthenticated && (

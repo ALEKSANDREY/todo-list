@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSearchParams } from 'react-router'; // Import hook
-import { useTodo } from '../contexts/TodoContext.jsx';
+import { useTodo } from '../contexts/TodoContext';
 import TodoForm from '../features/Todos/TodoForm.jsx';
 import TodoList from '../features/Todos/TodoList/TodoList.jsx';
 import SortBy from '../shared/SortBy.jsx';
