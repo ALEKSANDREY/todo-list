@@ -5,17 +5,17 @@ import { useAuth } from '../contexts/AuthContext';
 function Logoff() {
     const { logout } = useAuth();
     const navigate = useNavigate();
-    const hasLoggedOut = useRef(false);
+    const effectFired = useRef(false);
 
     useEffect(() => {
-        if (!hasLoggedOut.current) {
-            hasLoggedOut.current = true;
+        if (!effectFired.current) {
+            effectFired.current = true;
             logout();
-            navigate('/login');
+            navigate('/login', { replace: true });
         }
     }, [logout, navigate]);
 
-    return null;
+    return <p style={{ textAlign: 'center' }}>Logging you out securely...</p>;
 }
 
 export default Logoff;

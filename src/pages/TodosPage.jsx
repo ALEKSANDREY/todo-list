@@ -1,57 +1,25 @@
 import React from 'react';
-import { useSearchParams } from 'react-router'; // Import hook
 import { useTodo } from '../contexts/TodoContext';
-import TodoForm from '../features/Todos/TodoForm.jsx';
-import TodoList from '../features/Todos/TodoList/TodoList.jsx';
-import SortBy from '../shared/SortBy.jsx';
-import FilterInput from '../shared/FilterInput.jsx';
-import StatusFilter from '../shared/StatusFilter.jsx'; // Import filter selector
+import StatusFilter from '../features/Todos/StatusFilter';
+import FilterInput from '../features/Todos/FilterInput';
+import TodoList from '../features/Todos/TodoList/TodoList';
 
 function TodosPage() {
-    const [searchParams] = useSearchParams();
-    const statusFilter = searchParams.get('status') || 'all'; // Read the current state directly from the address bar
-
-    const {
-        todoList,
-        error,
-        isTodoListLoading,
-        sortBy,
-        sortDirection,
-        addTodo,
-        completeTodo,
-        updateTodo,
-        setSort,
-        clearError,
-    } = useTodo();
+    // Extract filter values directly out of your custom hook engine context
+    const { filterTerm, setFilterTerm } = useTodo();
 
     return (
-        <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px' }}>
-            {error && (
-                <div>
-                    <p style={{ color: 'red' }}>{error}</p>
-                    <button onClick={clearError}>Clear Error</button>
-                </div>
-            )}
+        <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+            <h2>My Tasks</h2>
 
-            <SortBy
-                sortBy={sortBy}
-                sortDirection={sortDirection}
-                onSortByChange={(newSortBy) => setSort(newSortBy, sortDirection)}
-                onSortDirectionChange={(newDir) => setSort(sortBy, newDir)}
-            />
+            <StatusFilter />
 
-            <StatusFilter /> {/* Injects URL mutator selection field */}
+            {/* THE FIX: Render the missing keyword filter input bar right here */}
+            <div style={{ margin: '15px 0' }}>
+                <FilterInput filterTerm={filterTerm} onFilterChange={setFilterTerm} />
+            </div>
 
-            {isTodoListLoading && <p>Loading your profile task streams...</p>}
-
-            <TodoForm onAddTodo={addTodo} />
-
-            <TodoList
-                todoList={todoList}
-                onCompleteTodo={completeTodo}
-                onUpdateTodo={updateTodo}
-                statusFilter={statusFilter} // Pass down the filter string
-            />
+            <TodoList />
         </div>
     );
 }
