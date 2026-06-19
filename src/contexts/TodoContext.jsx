@@ -54,7 +54,7 @@ export function TodoProvider({ children }) {
 
     useEffect(() => {
         fetchTodos();
-    }, [fetchTodos]);
+    }, [fetchTodos, state.dataVersion]);
 
     const addTodo = async (todoTitle) => {
         const tempTodo = { id: Date.now(), title: todoTitle, isCompleted: false };
@@ -84,11 +84,11 @@ export function TodoProvider({ children }) {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                 credentials: 'include',
-                body: JSON.stringify({ isCompleted: true, createdAt: originalTodo.createdAt }),
+                // FIX: Use isCompleted: true to match the schema format accepted by the POST route
+                body: JSON.stringify({ title: originalTodo.title, isCompleted: true }),
             });
             if (!response.ok) throw new Error('Failed to complete todo');
 
-            // FIX 2: Dispatch completion success tracking to cycle version cache indicators
             dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_SUCCESS, payload: { id } });
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_ERROR, payload: { id, originalTodo, message: err.message } });
@@ -104,12 +104,15 @@ export function TodoProvider({ children }) {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
                 credentials: 'include',
-                body: JSON.stringify({ title: editedTodo.title, isCompleted: editedTodo.isCompleted, createdAt: originalTodo.createdAt }),
+                // FIX: Fallback to existing structural properties to prevent undefined key updates
+                body: JSON.stringify({
+                    title: editedTodo.title,
+                    isCompleted: originalTodo.isCompleted || false
+                }),
             });
             if (!response.ok) throw new Error('Failed to update todo');
 
-            // FIX 2: Dispatch edit update success tracking to cycle version cache indicators
-            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { id: editedTodo.id } });
+            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { todo: editedTodo } });
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.UPDATE_TODO_ERROR, payload: { id: editedTodo.id, originalTodo, message: err.message } });
         }

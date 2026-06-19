@@ -26,12 +26,9 @@ function ProfilePage() {
                     throw new Error('Failed to fetch todos');
                 }
 
-                const data = await response.json(); // Read the raw data object wrapper
-
-                // access the inner array using data.tasks instead of using the raw object
+                const data = await response.json();
                 const taskList = data.tasks || [];
 
-                // Calculate statistics using our safe array
                 const total = taskList.length;
                 const completed = taskList.filter((todo) => todo.isCompleted).length;
                 const active = total - completed;
@@ -49,29 +46,53 @@ function ProfilePage() {
     const percentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
     return (
-        <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
-            <h2>Your Profile</h2>
-            <p><strong>Account Name:</strong> {email || 'Authenticated User'}</p>
+        <main className="min-h-[calc(100vh-73px)] bg-slate-900 py-10 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md mx-auto bg-slate-800 border border-slate-700/60 rounded-2xl shadow-xl p-6">
+                <h2 className="text-2xl font-extrabold text-slate-100 tracking-tight border-b border-slate-700 pb-3 mb-4">
+                    Your Profile
+                </h2>
+                <p className="text-sm text-slate-300">
+                    <strong className="text-indigo-400 font-semibold mr-1">Account Name:</strong>
+                    {email || 'Authenticated User'}
+                </p>
 
-            <div style={{ background: '#f5f5f5', padding: '15px', borderRadius: '6px', marginTop: '20px' }}>
-                <h3>Todo Productivity Statistics</h3>
-                {loading && <p>Analyzing your task history...</p>}
-                {error && <p style={{ color: 'red' }}>{error}</p>}
+                {/* THE FIXED CARD CONTAINER CONTAINER PANEL */}
+                <div className="bg-slate-900/50 border border-slate-700/40 p-5 rounded-xl mt-6 space-y-3">
+                    <h3 className="text-md font-bold text-slate-200 tracking-wide uppercase text-xs text-indigo-400">
+                        Todo Productivity Statistics
+                    </h3>
 
-                {!loading && !error && (
-                    <>
-                        <p>Total Tasks Created: {stats.total}</p>
-                        <p>Completed Tasks: {stats.completed}</p>
-                        <p>Active Pending Tasks: {stats.active}</p>
-                        <hr />
-                        <h4>Task Completion Score: {percentage}%</h4>
-                        <div style={{ width: '100%', background: '#ddd', height: '10px', borderRadius: '4px' }}>
-                            <div style={{ width: `${percentage}%`, background: 'green', height: '10px', borderRadius: '4px' }} />
-                        </div>
-                    </>
-                )}
+                    {loading && <p className="text-sm text-slate-400 animate-pulse">Analyzing your task history...</p>}
+                    {error && <p className="text-sm text-red-400 font-medium">⚠️ {error}</p>}
+
+                    {!loading && !error && (
+                        <>
+                            <div className="space-y-2 text-sm text-slate-300 pt-1">
+                                <p className="flex justify-between"><span>Total Tasks Created:</span> <span className="font-bold text-slate-100">{stats.total}</span></p>
+                                <p className="flex justify-between"><span>Completed Tasks:</span> <span className="font-bold text-emerald-400">{stats.completed}</span></p>
+                                <p className="flex justify-between"><span>Active Pending Tasks:</span> <span className="font-bold text-amber-400">{stats.active}</span></p>
+                            </div>
+
+                            <hr className="border-slate-700/60 my-3" />
+
+                            <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-slate-200 flex justify-between">
+                                    <span>Task Completion Score:</span>
+                                    <span className="text-indigo-400 font-bold">{percentage}%</span>
+                                </h4>
+                                {/* Clean Interactive Progress Tracker Gauge */}
+                                <div className="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                                    <div
+                                        className="bg-indigo-500 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(99,102,241,0.4)]"
+                                        style={{ width: `${percentage}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
-        </div>
+        </main>
     );
 }
 
