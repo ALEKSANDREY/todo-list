@@ -1,14 +1,7 @@
-import './App.css';
-import { Routes, Route } from 'react-router';
-import HomePage from './pages/HomePage';
-import AboutPage from './pages/AboutPage';
-import LoginPage from './pages/LoginPage';
-import TodosPage from './pages/TodosPage';
-import ProfilePage from './pages/ProfilePage';
-import NotFoundPage from './pages/NotFoundPage';
-import RequireAuth from './components/RequireAuth';
-import Header from './shared/Header';
-import Logoff from './shared/Logoff';
+import { useState } from 'react'
+import './App.css'
+import TodoList from './features/TodoList/TodoList.jsx'
+import TodoForm from './features/TodoForm.jsx'
 
 function App() {
     return (
@@ -33,29 +26,22 @@ function App() {
                         }
                     />
 
-                    {/* Protected Logoff Route */}
-                    <Route
-                        path="/logoff"
-                        element={
-                            <RequireAuth>
-                                <Logoff />
-                            </RequireAuth>
-                        }
-                    />
+    function updateTodo(editedTodo) {
+        const updatedTodos = todoList.map(todo =>
+            todo.id === editedTodo.id ? { ...editedTodo } : todo
+        );
+        setTodoList(updatedTodos);
+    }
 
-                    <Route
-                        path='/profile'
-                        element={
-                            <RequireAuth>
-                                <ProfilePage />
-                            </RequireAuth>
-                        }
-                    />
-
-                    {/* 404 Catch-All Route */}
-                    <Route path='*' element={<NotFoundPage />} />
-                </Routes>
-            </main>
+    return (
+        <div>
+            <h1>Todo List</h1>
+            <TodoForm onAddTodo={addTodo} />
+            <TodoList
+                todoList={todoList}
+                onCompleteTodo={completeTodo}
+                onUpdateTodo={updateTodo}
+            />
         </div>
     );
 }
