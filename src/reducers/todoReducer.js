@@ -8,11 +8,15 @@ export const TODO_ACTIONS = {
     COMPLETE_TODO_START: 'COMPLETE_TODO_START',
     COMPLETE_TODO_SUCCESS: 'COMPLETE_TODO_SUCCESS',
     COMPLETE_TODO_ERROR: 'COMPLETE_TODO_ERROR',
+    REOPEN_TODO_START: 'REOPEN_TODO_START',
+    REOPEN_TODO_SUCCESS: 'REOPEN_TODO_SUCCESS',
+    REOPEN_TODO_ERROR: 'REOPEN_TODO_ERROR',
     UPDATE_TODO_START: 'UPDATE_TODO_START',
     UPDATE_TODO_SUCCESS: 'UPDATE_TODO_SUCCESS',
     UPDATE_TODO_ERROR: 'UPDATE_TODO_ERROR',
     SET_SORT: 'SET_SORT',
     SET_FILTER: 'SET_FILTER',
+    UPSERT_TASK: 'UPSERT_TASK',
     CLEAR_ERROR: 'CLEAR_ERROR',
     CLEAR_FILTER_ERROR: 'CLEAR_FILTER_ERROR',
     RESET_FILTERS: 'RESET_FILTERS',
@@ -67,6 +71,15 @@ export function todoReducer(state, action) {
         case TODO_ACTIONS.COMPLETE_TODO_ERROR:
             return { ...state, todoList: state.todoList.map(t => t.id === action.payload.id ? action.payload.originalTodo : t), error: action.payload.message };
 
+        case TODO_ACTIONS.REOPEN_TODO_START:
+            return { ...state, todoList: state.todoList.map(t => t.id === action.payload.id ? { ...t, isCompleted: false } : t) };
+
+        case TODO_ACTIONS.REOPEN_TODO_SUCCESS:
+            return { ...state, dataVersion: state.dataVersion + 1 };
+
+        case TODO_ACTIONS.REOPEN_TODO_ERROR:
+            return { ...state, todoList: state.todoList.map(t => t.id === action.payload.id ? action.payload.originalTodo : t), error: action.payload.message };
+
         case TODO_ACTIONS.UPDATE_TODO_START:
             return { ...state, todoList: state.todoList.map(t => t.id === action.payload.todo.id ? action.payload.todo : t) };
 
@@ -87,6 +100,15 @@ export function todoReducer(state, action) {
             return { ...state, filterError: '' };
         case TODO_ACTIONS.RESET_FILTERS:
             return { ...state, filterTerm: '', sortBy: 'creationDate', sortDirection: 'desc', filterError: '' };
+        case TODO_ACTIONS.UPSERT_TASK:
+            // Replace the task row with the authoritative server version
+            // (used after PATCHes issued from other contexts, e.g. TaskMeta).
+            return {
+                ...state,
+                todoList: state.todoList.map((t) =>
+                    t.id === action.payload.todo.id ? action.payload.todo : t
+                ),
+            };
         default:
             throw new Error(`Unknown action type: ${action.type}`);
     }

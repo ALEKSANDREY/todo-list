@@ -16,11 +16,24 @@ function TodosPage() {
         setSort,
         addTodo,
         completeTodo,
+        reopenTodo,
+        todoList,
         updateTodo
     } = useTodo();
 
     const [searchParams] = useSearchParams();
     const statusFilter = searchParams.get('status') || 'all';
+
+    // The checkbox toggles: completing moves the task to Done (and spawns the
+    // next occurrence for recurring tasks); unchecking a completed task reopens it.
+    const handleToggleTodo = (id) => {
+        const task = todoList.find((t) => t.id === id);
+        if (task && task.isCompleted) {
+            reopenTodo(id);
+        } else {
+            completeTodo(id);
+        }
+    };
 
     return (
         <div className="mx-auto max-w-2xl">
@@ -69,7 +82,7 @@ function TodosPage() {
             <div className="card animate-enter-3 p-6">
                 <TodoList
                     statusFilter={statusFilter}
-                    onCompleteTodo={completeTodo}
+                    onCompleteTodo={handleToggleTodo}
                     onUpdateTodo={updateTodo}
                 />
             </div>

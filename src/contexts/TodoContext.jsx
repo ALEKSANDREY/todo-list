@@ -1,56 +1,32 @@
 /* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { todoReducer, initialTodoState, TODO_ACTIONS } from '../reducers/todoReducer';
-import { useAuth, DEMO_TOKEN } from './AuthContext';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
 import useDebounce from '../utils/useDebounce';
 
 const TodoContext = createContext();
 
-// Demo task store: while the demo session is active the workspace runs
-// fully client-side (seeded tasks + localStorage persistence) so the public
-// demo stays interactive with no backend.
-const DEMO_STORAGE_KEY = 'todo-demo-tasks-v1';
-
-const DEMO_SEED_TASKS = [
-    { id: 1, title: 'Review the new design', isCompleted: false },
-    { id: 2, title: 'Polish the portfolio README', isCompleted: false },
-    { id: 3, title: 'Prep for the recruiter call', isCompleted: false },
-    { id: 4, title: 'Ship the redesign branch', isCompleted: true },
-];
-
-function loadDemoTasks() {
-    try {
-        const raw = window.localStorage.getItem(DEMO_STORAGE_KEY);
-        if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) return parsed;
-        }
-    } catch {
-        // Storage unavailable — fall through to seed data.
-    }
-    return [...DEMO_SEED_TASKS];
+// Task store backed by the Node API. The server row is the source of truth;
+// the client shape adds `isCompleted` as an alias of `completed` for the
+// existing UI. Sorting/filtering stay client-side.
+export function toClientTask(row) {
+    if (!row) return row;
+    return { ...row, isCompleted: !!row.completed };
 }
 
-function saveDemoTasks(tasks) {
-    try {
-        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(tasks));
-    } catch {
-        // Storage unavailable — demo still works for this session.
-    }
-}
-
-function applyDemoQuery(tasks, { sortBy, sortDirection, filterTerm }) {
-    let result = [...tasks];
+function applyQuery(tasks, { sortBy, sortDirection, filterTerm }) {
+    const result = [...tasks];
     const term = (filterTerm || '').trim().toLowerCase();
-    if (term) {
-        result = result.filter((t) => t.title.toLowerCase().includes(term));
-    }
+    const filtered = term
+        ? result.filter((t) => (t.title || '').toLowerCase().includes(term))
+        : result;
     const dir = sortDirection === 'asc' ? 1 : -1;
-    result.sort((a, b) => {
-        if (sortBy === 'title') return a.title.localeCompare(b.title) * dir;
-        return (a.id - b.id) * dir; // creationDate → insertion order via timestamp ids
+    filtered.sort((a, b) => {
+        if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '') * dir;
+        return (a.id - b.id) * dir; // creationDate → insertion order via ids
     });
-    return result;
+    return filtered;
 }
 
 export function useTodo() {
@@ -61,84 +37,57 @@ export function useTodo() {
 
 export function TodoProvider({ children }) {
     const [state, dispatch] = useReducer(todoReducer, initialTodoState);
-    const { token } = useAuth();
-    const isDemoMode = token === DEMO_TOKEN;
+    const { user } = useAuth();
 
     const debouncedFilterTerm = useDebounce(state.filterTerm, 300);
 
     const fetchTodos = useCallback(async () => {
-        if (!token) return;
-
-        // Demo mode: serve tasks from the local store, no network.
-        if (isDemoMode) {
-            const tasks = applyDemoQuery(loadDemoTasks(), {
+        if (!user) return;
+        dispatch({ type: TODO_ACTIONS.FETCH_START });
+        try {
+            const data = await api('/api/tasks');
+            const tasks = applyQuery((data.tasks || []).map(toClientTask), {
                 sortBy: state.sortBy,
                 sortDirection: state.sortDirection,
                 filterTerm: debouncedFilterTerm,
             });
             dispatch({ type: TODO_ACTIONS.FETCH_SUCCESS, payload: { todos: tasks } });
-            return;
-        }
-
-        dispatch({ type: TODO_ACTIONS.FETCH_START });
-
-        const params = new URLSearchParams({
-            sortBy: state.sortBy,
-            sortDirection: state.sortDirection,
-        });
-        if (debouncedFilterTerm) {
-            params.append('find', debouncedFilterTerm);
-        }
-
-        try {
-            const response = await fetch(`/api/tasks?${params}`, {
-                headers: { 'X-CSRF-TOKEN': token },
-                credentials: 'include',
-            });
-            if (response.status === 401) throw new Error('unauthorized');
-            if (!response.ok) throw new Error('Failed to fetch todos');
-
-            const data = await response.json();
-            dispatch({ type: TODO_ACTIONS.FETCH_SUCCESS, payload: { todos: data.tasks } });
         } catch (err) {
-            // FIX 1: Evaluate if query states are active, then bundle the isFilterError boolean indicator flag
-            const isFilterActive = debouncedFilterTerm || state.sortBy !== 'creationDate' || state.sortDirection !== 'desc';
+            const isFilterActive =
+                debouncedFilterTerm || state.sortBy !== 'creationDate' || state.sortDirection !== 'desc';
             dispatch({
                 type: TODO_ACTIONS.FETCH_ERROR,
                 payload: {
-                    message: isFilterActive ? `Error filtering/sorting todos: ${err.message}` : `Error fetching todos: ${err.message}`,
-                    isFilterError: isFilterActive
-                }
+                    message: isFilterActive
+                        ? `Error filtering/sorting todos: ${err.message}`
+                        : `Error fetching todos: ${err.message}`,
+                    isFilterError: isFilterActive,
+                },
             });
         }
-    }, [token, isDemoMode, state.sortBy, state.sortDirection, debouncedFilterTerm]);
+    }, [user, state.sortBy, state.sortDirection, debouncedFilterTerm]);
 
     useEffect(() => {
         fetchTodos();
     }, [fetchTodos, state.dataVersion]);
 
+    // Merge an authoritative server row into local state (used by contexts
+    // that PATCH task fields, e.g. TaskMetaContext).
+    const upsertTask = useCallback((serverRow) => {
+        dispatch({ type: TODO_ACTIONS.UPSERT_TASK, payload: { todo: toClientTask(serverRow) } });
+    }, []);
+
     const addTodo = async (todoTitle) => {
-        const tempTodo = { id: Date.now(), title: todoTitle, isCompleted: false };
+        const tempTodo = { id: `temp-${Date.now()}`, title: todoTitle, isCompleted: false, completed: false };
         dispatch({ type: TODO_ACTIONS.ADD_TODO_START, payload: { todo: tempTodo } });
-
-        // Demo mode: persist locally, no network.
-        if (isDemoMode) {
-            saveDemoTasks([...loadDemoTasks(), tempTodo]);
-            dispatch({ type: TODO_ACTIONS.ADD_TODO_SUCCESS, payload: { tempId: tempTodo.id, todo: tempTodo } });
-            return tempTodo.id;
-        }
-
         try {
-            const response = await fetch('/api/tasks', {
+            const saved = await api('/api/tasks', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                credentials: 'include',
-                body: JSON.stringify({ title: todoTitle, isCompleted: false }),
+                body: { title: todoTitle, completed: false },
             });
-            if (!response.ok) throw new Error('Failed to add todo');
-            const savedTodo = await response.json();
-            dispatch({ type: TODO_ACTIONS.ADD_TODO_SUCCESS, payload: { tempId: tempTodo.id, todo: savedTodo } });
-            return savedTodo.id;
+            const client = toClientTask(saved);
+            dispatch({ type: TODO_ACTIONS.ADD_TODO_SUCCESS, payload: { tempId: tempTodo.id, todo: client } });
+            return client.id;
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.ADD_TODO_ERROR, payload: { tempId: tempTodo.id, message: err.message } });
             return null;
@@ -146,59 +95,50 @@ export function TodoProvider({ children }) {
     };
 
     const completeTodo = async (id) => {
-        const originalTodo = state.todoList.find(t => t.id === id);
+        const originalTodo = state.todoList.find((t) => t.id === id);
         dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_START, payload: { id } });
-
-        // Demo mode: persist locally, no network.
-        if (isDemoMode) {
-            saveDemoTasks(loadDemoTasks().map(t => t.id === id ? { ...t, isCompleted: true } : t));
-            dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_SUCCESS, payload: { id } });
-            return;
-        }
-
         try {
-            const response = await fetch(`/api/tasks/${id}`, {
+            const saved = await api(`/api/tasks/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                credentials: 'include',
-                // FIX: Use isCompleted: true to match the schema format accepted by the POST route
-                body: JSON.stringify({ title: originalTodo.title, isCompleted: true }),
+                body: { completed: true },
             });
-            if (!response.ok) throw new Error('Failed to complete todo');
-
+            dispatch({ type: TODO_ACTIONS.UPSERT_TASK, payload: { todo: toClientTask(saved) } });
             dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_SUCCESS, payload: { id } });
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_ERROR, payload: { id, originalTodo, message: err.message } });
         }
     };
 
-    const updateTodo = async (editedTodo) => {
-        const originalTodo = state.todoList.find(t => t.id === editedTodo.id);
-        dispatch({ type: TODO_ACTIONS.UPDATE_TODO_START, payload: { todo: editedTodo } });
-
-        // Demo mode: persist locally, no network.
-        if (isDemoMode) {
-            saveDemoTasks(loadDemoTasks().map(t => t.id === editedTodo.id ? editedTodo : t));
-            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { todo: editedTodo } });
-            return;
-        }
-
+    const reopenTodo = async (id) => {
+        const originalTodo = state.todoList.find((t) => t.id === id);
+        dispatch({ type: TODO_ACTIONS.REOPEN_TODO_START, payload: { id } });
         try {
-            const response = await fetch(`/api/tasks/${editedTodo.id}`, {
+            const saved = await api(`/api/tasks/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
-                credentials: 'include',
-                // FIX: Fallback to existing structural properties to prevent undefined key updates
-                body: JSON.stringify({
-                    title: editedTodo.title,
-                    isCompleted: originalTodo.isCompleted || false
-                }),
+                body: { completed: false },
             });
-            if (!response.ok) throw new Error('Failed to update todo');
-
-            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { todo: editedTodo } });
+            dispatch({ type: TODO_ACTIONS.UPSERT_TASK, payload: { todo: toClientTask(saved) } });
+            dispatch({ type: TODO_ACTIONS.REOPEN_TODO_SUCCESS, payload: { id } });
         } catch (err) {
-            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_ERROR, payload: { id: editedTodo.id, originalTodo, message: err.message } });
+            dispatch({ type: TODO_ACTIONS.REOPEN_TODO_ERROR, payload: { id, originalTodo, message: err.message } });
+        }
+    };
+
+    const updateTodo = async (editedTodo) => {
+        const originalTodo = state.todoList.find((t) => t.id === editedTodo.id);
+        dispatch({ type: TODO_ACTIONS.UPDATE_TODO_START, payload: { todo: editedTodo } });
+        try {
+            const saved = await api(`/api/tasks/${editedTodo.id}`, {
+                method: 'PATCH',
+                body: { title: editedTodo.title },
+            });
+            dispatch({ type: TODO_ACTIONS.UPSERT_TASK, payload: { todo: toClientTask(saved) } });
+            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { todo: toClientTask(saved) } });
+        } catch (err) {
+            dispatch({
+                type: TODO_ACTIONS.UPDATE_TODO_ERROR,
+                payload: { id: editedTodo.id, originalTodo, message: err.message },
+            });
         }
     };
 
@@ -218,7 +158,9 @@ export function TodoProvider({ children }) {
         ...state,
         addTodo,
         completeTodo,
+        reopenTodo,
         updateTodo,
+        upsertTask,
         setSort,
         setFilterTerm,
         clearError,

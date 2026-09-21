@@ -1,13 +1,14 @@
 /* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { loadJSON, saveJSON, uid } from '../utils/localStore';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { api } from '../utils/api';
+import { useAuth } from './AuthContext';
+import { useTodo } from './TodoContext';
 
-// CRM-lite: contacts + a customizable pipeline kanban. Fully client-side,
-// persisted in localStorage so it works in demo mode and offline.
+// CRM-lite: contacts + a customizable pipeline kanban, backed by the Node API.
+// The server is the source of truth; the context keeps the same interface the
+// pages already use. Empty foreign keys are '' client-side, null server-side.
 
 const CrmContext = createContext();
-const CONTACTS_KEY = 'powerpack-contacts-v1';
-const PIPELINE_KEY = 'powerpack-pipeline-v1';
 
 export const DEFAULT_STAGES = [
     { id: 'new', name: 'New' },
@@ -16,12 +17,16 @@ export const DEFAULT_STAGES = [
     { id: 'done', name: 'Done' },
 ];
 
-function loadPipeline() {
-    const raw = loadJSON(PIPELINE_KEY, null);
-    if (raw && Array.isArray(raw.stages) && raw.stages.length > 0 && Array.isArray(raw.cards)) {
-        return raw;
-    }
-    return { stages: DEFAULT_STAGES, cards: [] };
+const nullToEmpty = (v) => (v ?? '');
+
+function toClientCard(card) {
+    return { ...card, contactId: nullToEmpty(card.contactId), taskId: nullToEmpty(card.taskId) };
+}
+
+function toServerRef(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
 }
 
 export function useCrm() {
@@ -31,161 +36,215 @@ export function useCrm() {
 }
 
 export function CrmProvider({ children }) {
-    const [contacts, setContacts] = useState(() => loadJSON(CONTACTS_KEY, []));
-    const [pipeline, setPipeline] = useState(loadPipeline);
+    const { user } = useAuth();
+    const { todoList, upsertTask } = useTodo();
+    const [contacts, setContacts] = useState([]);
+    const [stages, setStages] = useState([]);
+    const [cards, setCards] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => { saveJSON(CONTACTS_KEY, contacts); }, [contacts]);
-    useEffect(() => { saveJSON(PIPELINE_KEY, pipeline); }, [pipeline]);
+    const fetchAll = useCallback(async () => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const [cData, pData] = await Promise.all([api('/api/contacts'), api('/api/pipeline')]);
+            setContacts(cData.contacts || []);
+            setStages(pData.stages || []);
+            setCards((pData.cards || []).map(toClientCard));
+        } catch {
+            // Errors surface per-action; the lists simply stay as-is.
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        fetchAll();
+    }, [fetchAll]);
 
     /* ---------------- Contacts ---------------- */
 
-    const addContact = useCallback((data) => {
-        const contact = {
-            id: uid(),
-            name: '',
-            company: '',
-            email: '',
-            phone: '',
-            notes: '',
-            tags: [],
-            ...data,
-        };
-        setContacts((prev) => [contact, ...prev]);
-        return contact.id;
+    const addContact = useCallback(async (data) => {
+        const saved = await api('/api/contacts', {
+            method: 'POST',
+            body: {
+                name: data.name || '',
+                company: data.company || '',
+                email: data.email || '',
+                phone: data.phone || '',
+                notes: data.notes || '',
+                tags: Array.isArray(data.tags) ? data.tags : [],
+            },
+        });
+        setContacts((prev) => [saved, ...prev]);
+        return saved.id;
     }, []);
 
-    const updateContact = useCallback((id, patch) => {
-        setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    const updateContact = useCallback(async (id, patch) => {
+        const saved = await api(`/api/contacts/${id}`, { method: 'PATCH', body: patch });
+        setContacts((prev) => prev.map((c) => (c.id === id ? saved : c)));
     }, []);
 
-    const deleteContact = useCallback((id) => {
-        setContacts((prev) => prev.filter((c) => c.id !== id));
-        // Unlink pipeline cards; task links are pruned lazily on read.
-        setPipeline((prev) => ({
-            ...prev,
-            cards: prev.cards.map((card) =>
-                card.contactId === id ? { ...card, contactId: '' } : card
-            ),
-        }));
-    }, []);
-
-    const getContact = useCallback(
-        (id) => contacts.find((c) => c.id === id),
-        [contacts]
+    const deleteContact = useCallback(
+        async (id) => {
+            await api(`/api/contacts/${id}`, { method: 'DELETE' });
+            setContacts((prev) => prev.filter((c) => c.id !== id));
+            // Server unlinks cards + tasks; mirror the task unlink locally.
+            for (const t of todoList) {
+                if (t.contactId === id || String(t.contactId) === String(id)) {
+                    upsertTask({ ...t, contactId: null });
+                }
+            }
+            setCards((prev) => prev.map((card) => (card.contactId === id ? { ...card, contactId: '' } : card)));
+        },
+        [todoList, upsertTask]
     );
+
+    const getContact = useCallback((id) => contacts.find((c) => c.id === id || String(c.id) === String(id)), [contacts]);
 
     /* ---------------- Pipeline stages ---------------- */
 
-    const addStage = useCallback((name) => {
-        const stage = { id: uid(), name: name.trim().slice(0, 40) };
-        setPipeline((prev) => ({ ...prev, stages: [...prev.stages, stage] }));
-        return stage.id;
+    const addStage = useCallback(async (name) => {
+        const clean = name.trim().slice(0, 40);
+        if (!clean) return null;
+        const saved = await api('/api/pipeline/stages', { method: 'POST', body: { name: clean } });
+        setStages((prev) => [...prev, saved]);
+        return saved.id;
     }, []);
 
-    const renameStage = useCallback((id, name) => {
+    const renameStage = useCallback(async (id, name) => {
         const clean = name.trim().slice(0, 40);
         if (!clean) return;
-        setPipeline((prev) => ({
-            ...prev,
-            stages: prev.stages.map((s) => (s.id === id ? { ...s, name: clean } : s)),
-        }));
+        const saved = await api(`/api/pipeline/stages/${id}`, { method: 'PATCH', body: { name: clean } });
+        setStages((prev) => prev.map((s) => (s.id === id ? saved : s)));
     }, []);
 
-    const deleteStage = useCallback((id) => {
-        setPipeline((prev) => {
-            const stages = prev.stages.filter((s) => s.id !== id);
-            if (stages.length === 0) return prev; // never delete the last stage
-            const fallback = stages[0].id;
-            return {
-                stages,
-                cards: prev.cards.map((c) =>
-                    c.stageId === id ? { ...c, stageId: fallback } : c
-                ),
-            };
-        });
+    const deleteStage = useCallback(async (id) => {
+        await api(`/api/pipeline/stages/${id}`, { method: 'DELETE' });
+        // The server moves orphaned cards to the first remaining stage —
+        // refetch so local cards match.
+        const pData = await api('/api/pipeline');
+        setStages(pData.stages || []);
+        setCards((pData.cards || []).map(toClientCard));
     }, []);
 
     /* ---------------- Pipeline cards ---------------- */
 
-    const addCard = useCallback((data) => {
-        const card = {
-            id: uid(),
-            title: '',
-            stageId: '',
-            contactId: '',
-            taskId: '',
-            notes: '',
-            ...data,
-        };
-        setPipeline((prev) => ({
-            ...prev,
-            cards: [{ ...card, stageId: card.stageId || prev.stages[0]?.id || 'new' }, ...prev.cards],
-        }));
-        return card.id;
+    const addCard = useCallback(
+        async (data) => {
+            const saved = await api('/api/pipeline/cards', {
+                method: 'POST',
+                body: {
+                    title: data.title || '',
+                    stageId: toServerRef(data.stageId) ?? stages[0]?.id ?? null,
+                    contactId: toServerRef(data.contactId),
+                    taskId: toServerRef(data.taskId),
+                    notes: data.notes || '',
+                },
+            });
+            const client = toClientCard(saved);
+            setCards((prev) => [client, ...prev]);
+            return client.id;
+        },
+        [stages]
+    );
+
+    const updateCard = useCallback(async (id, patch) => {
+        const body = { ...patch };
+        if ('contactId' in body) body.contactId = toServerRef(body.contactId);
+        if ('taskId' in body) body.taskId = toServerRef(body.taskId);
+        if ('stageId' in body) body.stageId = toServerRef(body.stageId);
+        const saved = await api(`/api/pipeline/cards/${id}`, { method: 'PATCH', body });
+        const client = toClientCard(saved);
+        setCards((prev) => prev.map((c) => (c.id === id ? client : c)));
     }, []);
 
-    const updateCard = useCallback((id, patch) => {
-        setPipeline((prev) => ({
-            ...prev,
-            cards: prev.cards.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-        }));
+    const moveCard = useCallback(
+        async (cardId, stageId) => {
+            await updateCard(cardId, { stageId });
+        },
+        [updateCard]
+    );
+
+    const deleteCard = useCallback(async (id) => {
+        await api(`/api/pipeline/cards/${id}`, { method: 'DELETE' });
+        setCards((prev) => prev.filter((c) => c.id !== id));
     }, []);
 
-    const moveCard = useCallback((cardId, stageId) => {
-        setPipeline((prev) => ({
-            ...prev,
-            cards: prev.cards.map((c) => (c.id === cardId ? { ...c, stageId } : c)),
-        }));
-    }, []);
-
-    const deleteCard = useCallback((id) => {
-        setPipeline((prev) => ({ ...prev, cards: prev.cards.filter((c) => c.id !== id) }));
-    }, []);
-
-    const clearCrm = useCallback(() => {
-        setContacts([]);
-        setPipeline({ stages: DEFAULT_STAGES, cards: [] });
-    }, []);
+    const clearCrm = useCallback(async () => {
+        // Reset to a blank CRM: no contacts, no cards, default stages.
+        await Promise.all([
+            ...cards.map((c) => api(`/api/pipeline/cards/${c.id}`, { method: 'DELETE' }).catch(() => null)),
+            ...contacts.map((c) => api(`/api/contacts/${c.id}`, { method: 'DELETE' }).catch(() => null)),
+        ]);
+        const keep = stages[0];
+        await Promise.all(
+            stages.slice(1).map((s) => api(`/api/pipeline/stages/${s.id}`, { method: 'DELETE' }).catch(() => null))
+        );
+        if (keep) {
+            await api(`/api/pipeline/stages/${keep.id}`, { method: 'PATCH', body: { name: 'New' } }).catch(() => null);
+            for (const name of ['Contacted', 'In Progress', 'Done']) {
+                await api('/api/pipeline/stages', { method: 'POST', body: { name } }).catch(() => null);
+            }
+        }
+        await fetchAll();
+    }, [cards, contacts, stages, fetchAll]);
 
     // One-click demo content so the board doesn't start as a blank slate.
-    const loadSampleCrm = useCallback(() => {
-        const c1 = { id: uid(), name: 'Maya Chen', company: 'Northwind Labs', email: 'maya@northwindlabs.com', phone: '415-555-0132', notes: 'Interested in the new onboarding flow.', tags: ['prospect', 'saas'] };
-        const c2 = { id: uid(), name: 'Devon Park', company: 'Acme Co', email: 'devon@acme.co', phone: '', notes: 'Met at the Vegas tech mixer — follow up about the intro call.', tags: ['networking'] };
-        const c3 = { id: uid(), name: 'Priya Nair', company: 'Brightline', email: 'priya@brightline.io', phone: '702-555-0188', notes: 'Decision maker for the team plan.', tags: ['client'] };
-        setContacts([c1, c2, c3]);
-        const mk = (title, stageId, contactId, notes = '') => ({
-            id: uid(), title, stageId, contactId, taskId: '', notes,
-        });
-        setPipeline({
-            stages: DEFAULT_STAGES,
-            cards: [
-                mk('Send proposal follow-up', 'contacted', c1.id, 'Proposal sent last week — nudge before Friday.'),
-                mk('Schedule intro call', 'new', c2.id),
-                mk('Draft onboarding checklist', 'in-progress', c3.id),
-                mk('Renew annual plan', 'done', c3.id, 'Closed — expansion opportunity in Q1.'),
-                mk('Research competitor pricing', 'new', ''),
-            ],
-        });
-    }, []);
+    const loadSampleCrm = useCallback(async () => {
+        const mkContact = (c) =>
+            api('/api/contacts', {
+                method: 'POST',
+                body: { name: '', company: '', email: '', phone: '', notes: '', tags: [], ...c },
+            });
+        const [c1, c2, c3] = await Promise.all([
+            mkContact({ name: 'Maya Chen', company: 'Northwind Labs', email: 'maya@northwindlabs.com', phone: '415-555-0132', notes: 'Interested in the new onboarding flow.', tags: ['prospect', 'saas'] }),
+            mkContact({ name: 'Devon Park', company: 'Acme Co', email: 'devon@acme.co', notes: 'Met at the Vegas tech mixer — follow up about the intro call.', tags: ['networking'] }),
+            mkContact({ name: 'Priya Nair', company: 'Brightline', email: 'priya@brightline.io', phone: '702-555-0188', notes: 'Decision maker for the team plan.', tags: ['client'] }),
+        ]);
+        const pData = await api('/api/pipeline');
+        const stageId = (name) => (pData.stages.find((s) => s.name === name) || pData.stages[0] || {}).id;
+        const mkCard = (title, st, contactId, notes = '') =>
+            api('/api/pipeline/cards', {
+                method: 'POST',
+                body: { title, stageId: st, contactId: contactId || null, notes },
+            });
+        await Promise.all([
+            mkCard('Send proposal follow-up', stageId('Contacted'), c1.id, 'Proposal sent last week — nudge before Friday.'),
+            mkCard('Schedule intro call', stageId('New'), c2.id),
+            mkCard('Draft onboarding checklist', stageId('In Progress'), c3.id),
+            mkCard('Renew annual plan', stageId('Done'), c3.id, 'Closed — expansion opportunity in Q1.'),
+            mkCard('Research competitor pricing', stageId('New'), null),
+        ]);
+        await fetchAll();
+    }, [fetchAll]);
 
-    const value = {
-        contacts,
-        addContact,
-        updateContact,
-        deleteContact,
-        getContact,
-        stages: pipeline.stages,
-        cards: pipeline.cards,
-        addStage,
-        renameStage,
-        deleteStage,
-        addCard,
-        updateCard,
-        moveCard,
-        deleteCard,
-        clearCrm,
-        loadSampleCrm,
-    };
+    const value = useMemo(
+        () => ({
+            contacts,
+            isLoading,
+            addContact,
+            updateContact,
+            deleteContact,
+            getContact,
+            stages,
+            cards,
+            addStage,
+            renameStage,
+            deleteStage,
+            addCard,
+            updateCard,
+            moveCard,
+            deleteCard,
+            clearCrm,
+            loadSampleCrm,
+        }),
+        [
+            contacts, isLoading, addContact, updateContact, deleteContact, getContact,
+            stages, cards, addStage, renameStage, deleteStage, addCard,
+            updateCard, moveCard, deleteCard, clearCrm, loadSampleCrm,
+        ]
+    );
 
     return <CrmContext.Provider value={value}>{children}</CrmContext.Provider>;
 }
