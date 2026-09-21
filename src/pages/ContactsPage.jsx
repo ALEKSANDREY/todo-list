@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useCrm } from '../contexts/CrmContext';
 
-const EMPTY_FORM = { name: '', company: '', email: '', phone: '', notes: '', tags: '' };
-
 function ContactModal({ initial, onClose, onSave }) {
     const [form, setForm] = useState(() => ({
         name: initial?.name || '',
