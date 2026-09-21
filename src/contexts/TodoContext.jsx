@@ -125,7 +125,7 @@ export function TodoProvider({ children }) {
         if (isDemoMode) {
             saveDemoTasks([...loadDemoTasks(), tempTodo]);
             dispatch({ type: TODO_ACTIONS.ADD_TODO_SUCCESS, payload: { tempId: tempTodo.id, todo: tempTodo } });
-            return;
+            return tempTodo.id;
         }
 
         try {
@@ -138,8 +138,10 @@ export function TodoProvider({ children }) {
             if (!response.ok) throw new Error('Failed to add todo');
             const savedTodo = await response.json();
             dispatch({ type: TODO_ACTIONS.ADD_TODO_SUCCESS, payload: { tempId: tempTodo.id, todo: savedTodo } });
+            return savedTodo.id;
         } catch (err) {
             dispatch({ type: TODO_ACTIONS.ADD_TODO_ERROR, payload: { tempId: tempTodo.id, message: err.message } });
+            return null;
         }
     };
 
