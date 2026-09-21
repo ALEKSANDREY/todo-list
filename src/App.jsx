@@ -4,11 +4,18 @@ import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import LoginPage from './pages/LoginPage';
 import TodosPage from './pages/TodosPage';
+import DashboardPage from './pages/DashboardPage';
+import ContactsPage from './pages/ContactsPage';
+import PipelinePage from './pages/PipelinePage';
+import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import RequireAuth from './components/RequireAuth';
 import Header from './shared/Header';
 import Logoff from './shared/Logoff';
+import ToastHost from './features/Reminders/ToastHost';
+import AssistantFab from './features/Assistant/AssistantFab';
+import AssistantPanel from './features/Assistant/AssistantPanel';
 
 function App() {
     return (
@@ -29,6 +36,38 @@ function App() {
                         element={
                             <RequireAuth>
                                 <TodosPage />
+                            </RequireAuth>
+                        }
+                    />
+                    <Route
+                        path='/dashboard'
+                        element={
+                            <RequireAuth>
+                                <DashboardPage />
+                            </RequireAuth>
+                        }
+                    />
+                    <Route
+                        path='/contacts'
+                        element={
+                            <RequireAuth>
+                                <ContactsPage />
+                            </RequireAuth>
+                        }
+                    />
+                    <Route
+                        path='/pipeline'
+                        element={
+                            <RequireAuth>
+                                <PipelinePage />
+                            </RequireAuth>
+                        }
+                    />
+                    <Route
+                        path='/settings'
+                        element={
+                            <RequireAuth>
+                                <SettingsPage />
                             </RequireAuth>
                         }
                     />
@@ -56,6 +95,11 @@ function App() {
                     <Route path='*' element={<NotFoundPage />} />
                 </Routes>
             </main>
+
+            {/* Power-pack overlays: available on every page */}
+            <ToastHost />
+            <AssistantFab />
+            <AssistantPanel />
         </div>
     );
 }

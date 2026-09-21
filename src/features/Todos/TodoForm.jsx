@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import DOMPurify from 'dompurify';
+import { useTaskMeta } from '../../contexts/TaskMetaContext';
 
 function TodoForm({ onAddTodo }) {
     const [workingTodoTitle, setWorkingTodoTitle] = useState('');
     const [validationError, setValidationError] = useState(''); // Tracking client input security state
+    const [showSchedule, setShowSchedule] = useState(false);
+    const [dueDate, setDueDate] = useState('');
+    const [remindAt, setRemindAt] = useState('');
+    const { setMeta } = useTaskMeta();
 
-    const handleAddTodo = (event) => {
+    const handleAddTodo = async (event) => {
         event.preventDefault();
         setValidationError('');
 
@@ -29,8 +34,17 @@ function TodoForm({ onAddTodo }) {
         });
 
         // 3. Forward secure string up to your data provider engine context layer
-        onAddTodo(sanitizedTitle);
+        const newId = await onAddTodo(sanitizedTitle);
+        if (newId && (dueDate || remindAt)) {
+            setMeta(newId, {
+                ...(dueDate ? { dueDate } : {}),
+                ...(remindAt ? { remindAt } : {}),
+            });
+        }
         setWorkingTodoTitle('');
+        setDueDate('');
+        setRemindAt('');
+        setShowSchedule(false);
     };
 
     return (
@@ -68,6 +82,42 @@ function TodoForm({ onAddTodo }) {
                     <span>{validationError}</span>
                 </div>
             )}
+
+            {/* Optional scheduling: due date + reminder */}
+            <div className="mt-3">
+                <button
+                    type="button"
+                    onClick={() => setShowSchedule((v) => !v)}
+                    aria-expanded={showSchedule}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                >
+                    {showSchedule ? '− Hide schedule options' : '+ Due date & reminder'}
+                </button>
+                {showSchedule && (
+                    <div className="animate-enter mt-2 grid gap-3 rounded-xl border border-slate-200/70 bg-slate-50/60 p-3 sm:grid-cols-2">
+                        <div>
+                            <label htmlFor="todoDueDate" className="field-label">Due date</label>
+                            <input
+                                type="date"
+                                id="todoDueDate"
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                className="input"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="todoRemindAt" className="field-label">Remind me at</label>
+                            <input
+                                type="datetime-local"
+                                id="todoRemindAt"
+                                value={remindAt}
+                                onChange={(e) => setRemindAt(e.target.value)}
+                                className="input"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
         </form>
     );
 }

@@ -5,13 +5,25 @@ import './index.css';
 import App from './App.jsx';
 import { AuthProvider } from './contexts/AuthContext';
 import { TodoProvider } from './contexts/TodoContext'; // From week 9 refactor
+import { TaskMetaProvider } from './contexts/TaskMetaContext';
+import { CrmProvider } from './contexts/CrmContext';
+import { RemindersProvider } from './contexts/RemindersContext';
+import { AssistantProvider } from './contexts/AssistantContext';
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>
         <BrowserRouter>
             <AuthProvider>
                 <TodoProvider>
-                    <App />
+                    <TaskMetaProvider>
+                        <CrmProvider>
+                            <RemindersProvider>
+                                <AssistantProvider>
+                                    <App />
+                                </AssistantProvider>
+                            </RemindersProvider>
+                        </CrmProvider>
+                    </TaskMetaProvider>
                 </TodoProvider>
             </AuthProvider>
         </BrowserRouter>
