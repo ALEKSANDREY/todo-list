@@ -1,10 +1,57 @@
 /* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { todoReducer, initialTodoState, TODO_ACTIONS } from '../reducers/todoReducer';
-import { useAuth } from './AuthContext';
+import { useAuth, DEMO_TOKEN } from './AuthContext';
 import useDebounce from '../utils/useDebounce';
 
 const TodoContext = createContext();
+
+// Demo task store: while the demo session is active the workspace runs
+// fully client-side (seeded tasks + localStorage persistence) so the public
+// demo stays interactive with no backend.
+const DEMO_STORAGE_KEY = 'todo-demo-tasks-v1';
+
+const DEMO_SEED_TASKS = [
+    { id: 1, title: 'Review the new design', isCompleted: false },
+    { id: 2, title: 'Polish the portfolio README', isCompleted: false },
+    { id: 3, title: 'Prep for the recruiter call', isCompleted: false },
+    { id: 4, title: 'Ship the redesign branch', isCompleted: true },
+];
+
+function loadDemoTasks() {
+    try {
+        const raw = window.localStorage.getItem(DEMO_STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+        }
+    } catch {
+        // Storage unavailable — fall through to seed data.
+    }
+    return [...DEMO_SEED_TASKS];
+}
+
+function saveDemoTasks(tasks) {
+    try {
+        window.localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(tasks));
+    } catch {
+        // Storage unavailable — demo still works for this session.
+    }
+}
+
+function applyDemoQuery(tasks, { sortBy, sortDirection, filterTerm }) {
+    let result = [...tasks];
+    const term = (filterTerm || '').trim().toLowerCase();
+    if (term) {
+        result = result.filter((t) => t.title.toLowerCase().includes(term));
+    }
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    result.sort((a, b) => {
+        if (sortBy === 'title') return a.title.localeCompare(b.title) * dir;
+        return (a.id - b.id) * dir; // creationDate → insertion order via timestamp ids
+    });
+    return result;
+}
 
 export function useTodo() {
     const context = useContext(TodoContext);
@@ -15,11 +62,24 @@ export function useTodo() {
 export function TodoProvider({ children }) {
     const [state, dispatch] = useReducer(todoReducer, initialTodoState);
     const { token } = useAuth();
+    const isDemoMode = token === DEMO_TOKEN;
 
     const debouncedFilterTerm = useDebounce(state.filterTerm, 300);
 
     const fetchTodos = useCallback(async () => {
         if (!token) return;
+
+        // Demo mode: serve tasks from the local store, no network.
+        if (isDemoMode) {
+            const tasks = applyDemoQuery(loadDemoTasks(), {
+                sortBy: state.sortBy,
+                sortDirection: state.sortDirection,
+                filterTerm: debouncedFilterTerm,
+            });
+            dispatch({ type: TODO_ACTIONS.FETCH_SUCCESS, payload: { todos: tasks } });
+            return;
+        }
+
         dispatch({ type: TODO_ACTIONS.FETCH_START });
 
         const params = new URLSearchParams({
@@ -51,7 +111,7 @@ export function TodoProvider({ children }) {
                 }
             });
         }
-    }, [token, state.sortBy, state.sortDirection, debouncedFilterTerm]);
+    }, [token, isDemoMode, state.sortBy, state.sortDirection, debouncedFilterTerm]);
 
     useEffect(() => {
         fetchTodos();
@@ -60,6 +120,13 @@ export function TodoProvider({ children }) {
     const addTodo = async (todoTitle) => {
         const tempTodo = { id: Date.now(), title: todoTitle, isCompleted: false };
         dispatch({ type: TODO_ACTIONS.ADD_TODO_START, payload: { todo: tempTodo } });
+
+        // Demo mode: persist locally, no network.
+        if (isDemoMode) {
+            saveDemoTasks([...loadDemoTasks(), tempTodo]);
+            dispatch({ type: TODO_ACTIONS.ADD_TODO_SUCCESS, payload: { tempId: tempTodo.id, todo: tempTodo } });
+            return;
+        }
 
         try {
             const response = await fetch('/api/tasks', {
@@ -80,6 +147,13 @@ export function TodoProvider({ children }) {
         const originalTodo = state.todoList.find(t => t.id === id);
         dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_START, payload: { id } });
 
+        // Demo mode: persist locally, no network.
+        if (isDemoMode) {
+            saveDemoTasks(loadDemoTasks().map(t => t.id === id ? { ...t, isCompleted: true } : t));
+            dispatch({ type: TODO_ACTIONS.COMPLETE_TODO_SUCCESS, payload: { id } });
+            return;
+        }
+
         try {
             const response = await fetch(`/api/tasks/${id}`, {
                 method: 'PATCH',
@@ -99,6 +173,13 @@ export function TodoProvider({ children }) {
     const updateTodo = async (editedTodo) => {
         const originalTodo = state.todoList.find(t => t.id === editedTodo.id);
         dispatch({ type: TODO_ACTIONS.UPDATE_TODO_START, payload: { todo: editedTodo } });
+
+        // Demo mode: persist locally, no network.
+        if (isDemoMode) {
+            saveDemoTasks(loadDemoTasks().map(t => t.id === editedTodo.id ? editedTodo : t));
+            dispatch({ type: TODO_ACTIONS.UPDATE_TODO_SUCCESS, payload: { todo: editedTodo } });
+            return;
+        }
 
         try {
             const response = await fetch(`/api/tasks/${editedTodo.id}`, {
