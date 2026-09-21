@@ -15,7 +15,12 @@ function Logoff() {
         }
     }, [logout, navigate]);
 
-    return <p style={{ textAlign: 'center' }}>Logging you out securely...</p>;
+    return (
+        <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <span className="spinner" />
+            <p className="text-sm text-slate-500">Logging you out securely…</p>
+        </div>
+    );
 }
 
 export default Logoff;

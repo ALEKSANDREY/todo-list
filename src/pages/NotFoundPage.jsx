@@ -2,10 +2,17 @@ import { Link } from 'react-router';
 
 function NotFoundPage() {
     return (
-        <div style={{ padding: '40px', textAlign: 'center' }}>
-            <h2>404: Route Not Found</h2>
-            <p>Oops! The page sequence you entered doesn't map to an active view container.</p>
-            <Link to="/" style={{ color: 'blue', textDecoration: 'underline' }}>Return to Workspace</Link>
+        <div className="animate-enter mx-auto max-w-md py-16 text-center">
+            <p className="gradient-text text-7xl font-extrabold tracking-tight">404</p>
+            <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-slate-900">
+                This page wandered off
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+                The address you entered doesn't map to anything in this workspace.
+            </p>
+            <Link to="/" className="btn-primary mt-8 inline-flex no-underline">
+                Return to workspace
+            </Link>
         </div>
     );
 }

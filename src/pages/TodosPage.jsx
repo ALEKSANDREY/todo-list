@@ -23,58 +23,57 @@ function TodosPage() {
     const statusFilter = searchParams.get('status') || 'all';
 
     return (
-        <main className="min-h-screen bg-slate-900 py-10 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl mx-auto">
+        <div className="mx-auto max-w-2xl">
+            {/* Header Section */}
+            <div className="animate-enter mb-8">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-500">
+                    Task Workspace
+                </p>
+                <h2 className="mt-2 text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+                    What will you <span className="gradient-text">accomplish</span> today?
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                    Capture, filter, and work through your agenda — one check at a time.
+                </p>
+            </div>
 
-                {/* Header Section */}
-                <div className="mb-8 text-center sm:text-left border-l-4 border-indigo-500 pl-4">
-                    <h2 className="text-3xl font-extrabold text-slate-100 tracking-tight">
-                        Task Workspace
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-400">
-                        Review, filter, and execute your development agenda items.
-                    </p>
-                </div>
+            {/* Add-task card */}
+            <div className="card card-hover animate-enter-1 p-6 mb-5">
+                <TodoForm onAddTodo={addTodo} />
+            </div>
 
-                {/* Forms & Panel Controls (Dark Card Styling) */}
-                <div className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-xl p-6 mb-6">
-                    <TodoForm onAddTodo={addTodo} />
-                </div>
-
-                <div className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-xl p-6 mb-6 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-700/50">
-                        <span className="text-sm font-semibold text-slate-300">Sort Matrix</span>
-                        <SortBy
-                            sortBy={sortBy}
-                            sortDirection={sortDirection}
-                            onSortByChange={setSort}
-                            onSortDirectionChange={setSort}
-                        />
+            {/* Controls card */}
+            <div className="card animate-enter-2 p-6 mb-5 space-y-5">
+                <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="sm:flex-1">
+                        <span className="field-label">Keyword search</span>
+                        <FilterInput filterTerm={filterTerm} onFilterChange={setFilterTerm} />
                     </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                        <div>
-                            <span className="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Filter Status</span>
-                            <StatusFilter />
-                        </div>
-                        <div>
-                            <span className="block text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Keyword Search</span>
-                            <FilterInput filterTerm={filterTerm} onFilterChange={setFilterTerm} />
-                        </div>
+                    <div className="sm:flex-1">
+                        <span className="field-label">Status</span>
+                        <StatusFilter />
                     </div>
                 </div>
-
-                {/* Todo List Mapping Wrapper */}
-                <div className="bg-slate-800 border border-slate-700/50 rounded-2xl shadow-xl p-6">
-                    <TodoList
-                        statusFilter={statusFilter}
-                        onCompleteTodo={completeTodo}
-                        onUpdateTodo={updateTodo}
+                <div>
+                    <span className="field-label">Sort</span>
+                    <SortBy
+                        sortBy={sortBy}
+                        sortDirection={sortDirection}
+                        onSortByChange={setSort}
+                        onSortDirectionChange={setSort}
                     />
                 </div>
-
             </div>
-        </main>
+
+            {/* Todo list card */}
+            <div className="card animate-enter-3 p-6">
+                <TodoList
+                    statusFilter={statusFilter}
+                    onCompleteTodo={completeTodo}
+                    onUpdateTodo={updateTodo}
+                />
+            </div>
+        </div>
     );
 }
 

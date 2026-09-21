@@ -12,11 +12,11 @@ import Logoff from './shared/Logoff';
 
 function App() {
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900">
+        <div className="min-h-screen text-slate-900">
             <Header />
 
             {/* RESPONSIVE MAIN CONTAINER WORKSPACE */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
                 <Routes>
                     {/* Public Routes */}
                     <Route path='/' element={<HomePage />} />

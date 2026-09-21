@@ -14,19 +14,17 @@ function StatusFilter() {
     };
 
     return (
-        <div style={{ margin: '15px 0', textAlign: 'center' }}>
-            <label htmlFor='statusFilter' style={{ marginRight: '8px', fontWeight: 'bold' }}>Task Scope View:</label>
-            <select
-                id='statusFilter'
-                value={currentStatus}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                style={{ padding: '4px 8px', borderRadius: '4px' }}
-            >
-                <option value='all'>All Todos</option>
-                <option value='active'>Active Tasks Only</option>
-                <option value='completed'>Completed Tasks Only</option>
-            </select>
-        </div>
+        <select
+            id="statusFilter"
+            aria-label="Filter tasks by status"
+            value={currentStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="select"
+        >
+            <option value="all">All tasks</option>
+            <option value="active">Active only</option>
+            <option value="completed">Completed only</option>
+        </select>
     );
 }
 

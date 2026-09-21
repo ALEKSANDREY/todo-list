@@ -15,7 +15,12 @@ function RequireAuth({ children }) {
     }, [isAuthenticated, navigate, location]);
 
     if (!isAuthenticated) {
-        return <p style={{ textAlign: 'center' }}>Verifying credentials...</p>;
+        return (
+            <div className="flex flex-col items-center gap-4 py-20 text-center">
+                <span className="spinner" />
+                <p className="text-sm text-slate-500">Verifying credentials…</p>
+            </div>
+        );
     }
 
     return children;

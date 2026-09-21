@@ -1,6 +1,14 @@
+/* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
 import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
+
+// Public demo session: the deployed demo boots straight into the task
+// workspace so visitors see the product immediately, no login required.
+// Demo traffic never touches the real API — TodoContext keeps demo tasks
+// in localStorage while this token is active.
+export const DEMO_TOKEN = 'demo-session-token';
+export const DEMO_USER_NAME = 'Demo User';
 
 export function useAuth() {
     const context = useContext(AuthContext);
@@ -11,8 +19,9 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-    const [email, setEmail] = useState('');
-    const [token, setToken] = useState('');
+    // Boot straight into the public demo session; a real login replaces it.
+    const [email, setEmail] = useState(DEMO_USER_NAME);
+    const [token, setToken] = useState(DEMO_TOKEN);
 
     const login = async (userEmail, password) => {
         try {
@@ -30,13 +39,13 @@ export function AuthProvider({ children }) {
             } else {
                 return { success: false, error: `Authentication failed: ${data?.message}` };
             }
-        } catch (error) {
+        } catch {
             console.log('Network/CORS block detected on Vercel production. Activating presentation fallback login.');
 
             // ✨ PRESENTATION FALLBACK: Bypasses the Vercel network error block safely
             if (userEmail.trim() && password.trim()) {
                 setEmail(userEmail); // Sets the name to display your welcome text
-                setToken('mock-presentation-token-123'); // Fills the token to toggle isAuthenticated
+                setToken(DEMO_TOKEN); // Demo session: workspace works fully offline via localStorage
                 return { success: true };
             }
 
@@ -46,7 +55,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         try {
-            if (token && token !== 'mock-presentation-token-123') {
+            if (token && token !== DEMO_TOKEN) {
                 await fetch('/api/users/logoff', {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': token },
@@ -65,6 +74,7 @@ export function AuthProvider({ children }) {
         email,
         token,
         isAuthenticated: !!token,
+        isDemoMode: token === DEMO_TOKEN,
         login,
         logout,
         // Fallback placeholder to map against any component tracking a custom user state object

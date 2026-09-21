@@ -34,31 +34,39 @@ function TodoForm({ onAddTodo }) {
     };
 
     return (
-        <form onSubmit={handleAddTodo} style={{ marginBottom: '15px' }}>
-            <label htmlFor="todoTitle" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Todo
+        <form onSubmit={handleAddTodo}>
+            <label htmlFor="todoTitle" className="field-label">
+                New task
             </label>
-            <input
-                type="text"
-                id="todoTitle"
-                value={workingTodoTitle}
-                onChange={(e) => {
-                    setWorkingTodoTitle(e.target.value);
-                    if (validationError) setValidationError(''); // Clear warning banner when typing resumes
-                }}
-                placeholder="Todo text"
-                maxLength={120} // Structural fallback safeguard restriction constraint
-                style={{ padding: '8px', width: '70%', marginRight: '10px' }}
-            />
-            <button type="submit" disabled={!workingTodoTitle.trim()} style={{ padding: '8px 12px' }}>
-                Add Todo
-            </button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                    type="text"
+                    id="todoTitle"
+                    value={workingTodoTitle}
+                    onChange={(e) => {
+                        setWorkingTodoTitle(e.target.value);
+                        if (validationError) setValidationError(''); // Clear warning banner when typing resumes
+                    }}
+                    placeholder="What needs doing?"
+                    maxLength={120} // Structural fallback safeguard restriction constraint
+                    className="input flex-1"
+                />
+                <button type="submit" disabled={!workingTodoTitle.trim()} className="btn-primary shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-4 w-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add task
+                </button>
+            </div>
 
             {/* User-friendly UI validation error indicator */}
             {validationError && (
-                <p style={{ color: 'red', fontSize: '0.85rem', marginTop: '5px', fontWeight: '500' }}>
-                    {validationError}
-                </p>
+                <div className="error-banner mt-3" role="alert">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5 shrink-0">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                    </svg>
+                    <span>{validationError}</span>
+                </div>
             )}
         </form>
     );
