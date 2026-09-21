@@ -1,136 +1,146 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-function LoginPage() {
-    const { login, isAuthenticated } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
+const inputClass =
+    'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 ' +
+    'placeholder:text-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100';
 
+export default function LoginPage() {
+    const { login, register, demo, authError, setAuthError } = useAuth();
+    const [mode, setMode] = useState('login'); // 'login' | 'register'
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loginError, setLoginError] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [busy, setBusy] = useState(false);
 
-    // Extract the target page they were bounced from, defaulting to /todos
-    const from = location.state?.from?.pathname || '/todos';
+    const switchMode = (next) => {
+        setMode(next);
+        setAuthError('');
+    };
 
-    useEffect(() => {
-        if (isAuthenticated) {
-            navigate(from, { replace: true });
-        }
-    }, [isAuthenticated, navigate, from]);
-
-    async function handleSubmit(e) {
+    const submit = async (e) => {
         e.preventDefault();
-        setLoginError('');
-        setIsSubmitting(true);
-        const result = await login(email, password);
-        setIsSubmitting(false);
-        if (!result.success) {
-            setLoginError(result.error);
+        setBusy(true);
+        try {
+            if (mode === 'login') {
+                await login(email.trim(), password);
+            } else {
+                await register(email.trim(), password, name.trim());
+            }
+        } catch {
+            // authError is already set in the context; stay on the form.
+        } finally {
+            setBusy(false);
         }
-    }
+    };
+
+    const continueDemo = async () => {
+        setBusy(true);
+        try {
+            await demo();
+        } catch {
+            // authError / backendDown handled by the context + gate.
+        } finally {
+            setBusy(false);
+        }
+    };
 
     return (
-        <div className="animate-enter flex justify-center px-2 py-6">
-            <div className="card grid w-full max-w-4xl overflow-hidden md:grid-cols-2">
-                {/* Brand panel */}
-                <div className="aurora-panel relative hidden flex-col justify-between p-10 text-white md:flex">
-                    <div className="absolute inset-0 bg-black/10" />
-                    <div className="relative">
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="h-5 w-5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                            </span>
-                            <span className="text-lg font-extrabold tracking-tight">Todo List</span>
-                        </div>
-                    </div>
-                    <div className="relative">
-                        <h2 className="text-3xl font-extrabold leading-tight tracking-tight">
-                            Your day,<br />beautifully organized.
-                        </h2>
-                        <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/85">
-                            Capture tasks, filter and sort your agenda, and track your momentum — all in one calm workspace.
-                        </p>
-                        <div className="mt-8 flex gap-6 text-xs font-semibold uppercase tracking-widest text-white/70">
-                            <span>Fast</span>
-                            <span>Focused</span>
-                            <span>Yours</span>
-                        </div>
-                    </div>
-                    <p className="relative text-xs text-white/60">Built with React · Vite · Tailwind</p>
+        <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-sky-50 px-4 py-10">
+            <div className="w-full max-w-md">
+                <div className="mb-6 text-center">
+                    <div className="logo-mark mx-auto mb-4 h-14 w-14 rounded-2xl text-xl font-extrabold">✓</div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-500">Task workspace</p>
+                    <h1 className="mt-1 text-3xl font-extrabold text-slate-900">
+                        {mode === 'login' ? 'Welcome back' : 'Create your account'}
+                    </h1>
+                    <p className="mt-2 text-sm text-slate-500">
+                        Your tasks, contacts, and focus time — saved to your own account.
+                    </p>
                 </div>
 
-                {/* Form panel */}
-                <div className="flex flex-col justify-center p-8 sm:p-10">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-                        Welcome back
-                    </h2>
-                    <p className="mt-1.5 text-sm text-slate-500">
-                        Log in to open your task workspace.
-                    </p>
+                <div className="card p-6 sm:p-8">
+                    <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+                        {(['login', 'register']).map((m) => (
+                            <button
+                                key={m}
+                                type="button"
+                                onClick={() => switchMode(m)}
+                                className={`rounded-lg px-3 py-2 text-sm font-bold transition ${
+                                    mode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                {m === 'login' ? 'Log in' : 'Sign up'}
+                            </button>
+                        ))}
+                    </div>
 
-                    {loginError && (
-                        <div className="error-banner mt-5" role="alert">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5 shrink-0">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                            </svg>
-                            <span>{loginError}</span>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-                        <div>
-                            <label htmlFor="loginEmail" className="field-label">Email</label>
+                    <form onSubmit={submit} className="space-y-3">
+                        {mode === 'register' && (
                             <input
-                                id="loginEmail"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                autoComplete="email"
-                                placeholder="you@example.com"
-                                className="input"
+                                className={inputClass}
+                                placeholder="Your name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                autoComplete="name"
                             />
-                        </div>
-                        <div>
-                            <label htmlFor="loginPassword" className="field-label">Password</label>
-                            <input
-                                id="loginPassword"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                autoComplete="current-password"
-                                placeholder="••••••••"
-                                className="input"
-                            />
-                        </div>
-                        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-                            {isSubmitting ? (
-                                <>
-                                    <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                                    </svg>
-                                    Logging in…
-                                </>
-                            ) : (
-                                'Log in'
-                            )}
+                        )}
+                        <input
+                            className={inputClass}
+                            type="email"
+                            required
+                            placeholder="Email address"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            autoComplete="email"
+                        />
+                        <input
+                            className={inputClass}
+                            type="password"
+                            required
+                            minLength={8}
+                            placeholder={mode === 'register' ? 'Password (min 8 characters)' : 'Password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                        />
+                        {authError && (
+                            <p role="alert" className="rounded-xl bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700">
+                                {authError}
+                            </p>
+                        )}
+                        <button
+                            type="submit"
+                            disabled={busy}
+                            className="btn-primary w-full py-2.5 text-sm disabled:opacity-60"
+                        >
+                            {busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
                         </button>
                     </form>
 
-                    <p className="mt-6 text-center text-xs leading-relaxed text-slate-400">
-                        Protected workspace — your session stays on this device.
+                    <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <span className="h-px flex-1 bg-slate-200" />
+                        or
+                        <span className="h-px flex-1 bg-slate-200" />
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={continueDemo}
+                        disabled={busy}
+                        className="w-full rounded-xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-60"
+                    >
+                        ✨ Continue as demo — one click, no sign-up
+                    </button>
+                    <p className="mt-3 text-center text-xs text-slate-400">
+                        Demo opens a seeded workspace you can explore instantly.
                     </p>
                 </div>
+
+                <p className="mt-6 text-center text-[0.7rem] font-medium text-slate-400">
+                    Built with React · Vite · Tailwind CSS · Node
+                </p>
             </div>
         </div>
     );
 }
-
-export default LoginPage;

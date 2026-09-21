@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useTaskMeta } from '../../contexts/TaskMetaContext';
 import { useCrm } from '../../contexts/CrmContext';
 import { todayKey, dueLabel, parseDateTimeLocal, formatTime } from '../../utils/dates';
+import RecurrenceBadge from '../Recurrence/RecurrenceBadge';
+import RecurrenceEditor from '../Recurrence/RecurrenceEditor';
+import TaskTimer from '../Time/TaskTimer';
 
 function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
     const [isEditing, setIsEditing] = useState(false);
@@ -105,8 +108,8 @@ function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
                 )}
             </div>
 
-            {/* Badges: due date, reminder, linked contact */}
-            {!isEditing && (m.dueDate || reminderDate || linkedContact) && (
+            {/* Badges: due date, reminder, linked contact, repeat */}
+            {!isEditing && (m.dueDate || reminderDate || linkedContact || m.recurrence) && (
                 <div className="mt-2 flex flex-wrap gap-1.5 pl-11">
                     {m.dueDate && (
                         <span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${
@@ -125,6 +128,7 @@ function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
                             👤 {linkedContact.name}
                         </span>
                     )}
+                    {m.recurrence && <RecurrenceBadge rule={m.recurrence} />}
                 </div>
             )}
 
@@ -172,6 +176,16 @@ function TodoListItem({ todo, onCompleteTodo, onUpdateTodo }) {
                             </button>
                         </div>
                     )}
+                    {/* Repeat */}
+                    <div className="border-t border-slate-100 pt-3 sm:col-span-3">
+                        <p className="field-label">🔁 Repeat</p>
+                        <RecurrenceEditor taskId={todo.id} />
+                    </div>
+                    {/* Time tracking */}
+                    <div className="border-t border-slate-100 pt-3 sm:col-span-3">
+                        <p className="field-label">⏱ Time tracking</p>
+                        <TaskTimer taskId={todo.id} />
+                    </div>
                 </div>
             )}
         </li>
