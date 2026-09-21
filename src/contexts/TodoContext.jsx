@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import { todoReducer, initialTodoState, TODO_ACTIONS } from '../reducers/todoReducer';
 import { useAuth } from './AuthContext';

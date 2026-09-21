@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
 import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
@@ -30,7 +31,7 @@ export function AuthProvider({ children }) {
             } else {
                 return { success: false, error: `Authentication failed: ${data?.message}` };
             }
-        } catch (error) {
+        } catch {
             console.log('Network/CORS block detected on Vercel production. Activating presentation fallback login.');
 
             // ✨ PRESENTATION FALLBACK: Bypasses the Vercel network error block safely

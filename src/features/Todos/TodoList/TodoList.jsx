@@ -3,10 +3,10 @@ import TodoListItem from '../TodoListItem.jsx';
 import { useTodo } from '../../../contexts/TodoContext';
 
 function TodoList({ statusFilter = 'all', onCompleteTodo, onUpdateTodo }) {
-    // 1. Consume todoList and dataVersion from context per Step 19 guidelines
-    const { todoList, dataVersion } = useTodo();
+    // 1. Consume todoList from context
+    const { todoList } = useTodo();
 
-    // 2. Track and memoize the filtered array, including dataVersion as a dependency
+    // 2. Memoize the filtered array (todoList gets a fresh reference on every mutation)
     const filteredTodoList = useMemo(() => {
         let tasks = [...todoList];
 
@@ -18,7 +18,7 @@ function TodoList({ statusFilter = 'all', onCompleteTodo, onUpdateTodo }) {
         }
 
         return tasks;
-    }, [todoList, statusFilter, dataVersion]); // Included dataVersion here
+    }, [todoList, statusFilter]);
 
     const getEmptyMessage = () => {
         if (statusFilter === 'completed') return 'No completed todos yet.';
