@@ -45,54 +45,69 @@ function ProfilePage() {
 
     const percentage = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
 
+    const statCards = [
+        { label: 'Total tasks', value: stats.total, accent: 'text-slate-900', bg: 'bg-slate-100' },
+        { label: 'Completed', value: stats.completed, accent: 'text-emerald-600', bg: 'bg-emerald-50' },
+        { label: 'Active', value: stats.active, accent: 'text-amber-600', bg: 'bg-amber-50' },
+    ];
+
     return (
-        <main className="min-h-[calc(100vh-73px)] bg-slate-900 py-10 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md mx-auto bg-slate-800 border border-slate-700/60 rounded-2xl shadow-xl p-6">
-                <h2 className="text-2xl font-extrabold text-slate-100 tracking-tight border-b border-slate-700 pb-3 mb-4">
-                    Your Profile
-                </h2>
-                <p className="text-sm text-slate-300">
-                    <strong className="text-indigo-400 font-semibold mr-1">Account Name:</strong>
-                    {email || 'Authenticated User'}
-                </p>
+        <div className="animate-enter mx-auto max-w-xl">
+            <div className="card p-8">
+                <div className="flex items-center gap-4">
+                    <span className="logo-mark h-14 w-14 rounded-2xl text-lg font-extrabold">
+                        {(email || 'U').charAt(0).toUpperCase()}
+                    </span>
+                    <div>
+                        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                            Your Profile
+                        </h2>
+                        <p className="mt-0.5 truncate text-sm text-slate-500">
+                            {email || 'Authenticated user'}
+                        </p>
+                    </div>
+                </div>
 
-                {/* THE FIXED CARD CONTAINER CONTAINER PANEL */}
-                <div className="bg-slate-900/50 border border-slate-700/40 p-5 rounded-xl mt-6 space-y-3">
-                    <h3 className="text-md font-bold text-slate-200 tracking-wide uppercase text-xs text-indigo-400">
-                        Todo Productivity Statistics
-                    </h3>
+                <div className="mt-8">
+                    <h3 className="field-label">Productivity statistics</h3>
 
-                    {loading && <p className="text-sm text-slate-400 animate-pulse">Analyzing your task history...</p>}
-                    {error && <p className="text-sm text-red-400 font-medium">⚠️ {error}</p>}
+                    {loading && (
+                        <div className="flex items-center gap-3 py-6 text-sm text-slate-500">
+                            <span className="spinner h-6 w-6 border-2" />
+                            Analyzing your task history…
+                        </div>
+                    )}
+                    {error && (
+                        <div className="error-banner" role="alert">
+                            <span>{error}</span>
+                        </div>
+                    )}
 
                     {!loading && !error && (
                         <>
-                            <div className="space-y-2 text-sm text-slate-300 pt-1">
-                                <p className="flex justify-between"><span>Total Tasks Created:</span> <span className="font-bold text-slate-100">{stats.total}</span></p>
-                                <p className="flex justify-between"><span>Completed Tasks:</span> <span className="font-bold text-emerald-400">{stats.completed}</span></p>
-                                <p className="flex justify-between"><span>Active Pending Tasks:</span> <span className="font-bold text-amber-400">{stats.active}</span></p>
+                            <div className="grid grid-cols-3 gap-3">
+                                {statCards.map((s) => (
+                                    <div key={s.label} className={`rounded-2xl ${s.bg} p-4 text-center`}>
+                                        <p className={`text-3xl font-extrabold tracking-tight ${s.accent}`}>{s.value}</p>
+                                        <p className="mt-1 text-[0.7rem] font-semibold uppercase tracking-widest text-slate-500">{s.label}</p>
+                                    </div>
+                                ))}
                             </div>
 
-                            <hr className="border-slate-700/60 my-3" />
-
-                            <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-slate-200 flex justify-between">
-                                    <span>Task Completion Score:</span>
-                                    <span className="text-indigo-400 font-bold">{percentage}%</span>
-                                </h4>
-                                {/* Clean Interactive Progress Tracker Gauge */}
-                                <div className="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                                    <div
-                                        className="bg-indigo-500 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_12px_rgba(99,102,241,0.4)]"
-                                        style={{ width: `${percentage}%` }}
-                                    />
+                            <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-semibold text-slate-700">Completion score</h4>
+                                    <span className="gradient-text text-xl font-extrabold">{percentage}%</span>
+                                </div>
+                                <div className="progress-track mt-3">
+                                    <div className="progress-fill" style={{ width: `${percentage}%` }} />
                                 </div>
                             </div>
                         </>
                     )}
                 </div>
             </div>
-        </main>
+        </div>
     );
 }
 

@@ -15,8 +15,9 @@ function HomePage() {
     }, [isAuthenticated, navigate]);
 
     return (
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-            <p>Redirecting you to your workspace...</p>
+        <div className="flex flex-col items-center gap-4 py-20 text-center">
+            <span className="spinner" />
+            <p className="text-sm text-slate-500">Redirecting you to your workspace…</p>
         </div>
     );
 }

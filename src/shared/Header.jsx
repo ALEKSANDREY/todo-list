@@ -1,72 +1,64 @@
-import React from 'react';
-import { Link, NavLink } from 'react-router'; // or 'react-router' depending on your setup
-import { useAuth } from '../contexts/AuthContext'; // adjust path to your AuthContext if needed
+import { Link, NavLink } from 'react-router';
+import { useAuth } from '../contexts/AuthContext';
+
+function CheckIcon({ className = 'w-5 h-5' }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+        </svg>
+    );
+}
 
 export default function Header() {
     const { isAuthenticated, user } = useAuth();
 
+    const pillClass = ({ isActive }) => `nav-pill ${isActive ? 'nav-pill-active' : ''}`;
+
     return (
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <header className="sticky top-0 z-50 border-b border-white/40 bg-white/70 backdrop-blur-xl">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between gap-3 py-3">
+                    {/* Brand */}
+                    <Link to="/" className="flex items-center gap-3 no-underline shrink-0">
+                        <span className="logo-mark">
+                            <CheckIcon />
+                        </span>
+                        <span className="leading-tight">
+                            <span className="block text-[1.05rem] font-extrabold tracking-tight text-slate-900">
+                                Todo List
+                            </span>
+                            <span className="block text-[0.7rem] font-medium tracking-wide text-slate-500 uppercase">
+                                Task Workspace
+                            </span>
+                        </span>
+                    </Link>
 
-                    {/* App Brand / Welcome Text */}
-                    <div className="text-center sm:text-left">
-                        <Link to="/" className="text-xl font-bold tracking-tight text-slate-900 no-underline">
-                            Todo List
-                        </Link>
-                        {isAuthenticated && user && (
-                            <p className="text-xs text-slate-500 m-0">Welcome, {user.name || 'User'}!</p>
-                        )}
-                    </div>
-
-                    {/* CENTERED & RESPONSIVE NAVIGATION MENU */}
-                    <nav className="flex flex-wrap justify-center items-center gap-2 bg-slate-100 p-1 rounded-lg mx-auto sm:mx-0">
-                        <NavLink
-                            to="/"
-                            className={({ isActive }) => `px-3 py-1.5 text-sm font-medium rounded-md no-underline transition-colors ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                            Home
-                        </NavLink>
-                        <NavLink
-                            to="/about"
-                            className={({ isActive }) => `px-3 py-1.5 text-sm font-medium rounded-md no-underline transition-colors ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                            About
-                        </NavLink>
-
+                    {/* Navigation */}
+                    <nav className="flex items-center gap-1 rounded-2xl border border-slate-200/70 bg-slate-100/70 p-1.5 shadow-inner">
+                        <NavLink to="/" end className={pillClass}>Home</NavLink>
+                        <NavLink to="/about" className={pillClass}>About</NavLink>
                         {isAuthenticated ? (
                             <>
-                                <NavLink
-                                    to="/todos"
-                                    className={({ isActive }) => `px-3 py-1.5 text-sm font-medium rounded-md no-underline transition-colors ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                                >
-                                    Todos
-                                </NavLink>
-                                <NavLink
-                                    to="/profile"
-                                    className={({ isActive }) => `px-3 py-1.5 text-sm font-medium rounded-md no-underline transition-colors ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                                >
-                                    Profile
-                                </NavLink>
+                                <NavLink to="/todos" className={pillClass}>Todos</NavLink>
+                                <NavLink to="/profile" className={pillClass}>Profile</NavLink>
                                 <NavLink
                                     to="/logoff"
-                                    className="px-3 py-1.5 text-sm font-medium rounded-md no-underline text-red-600 hover:bg-red-50 transition-colors"
+                                    className="nav-pill text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                                 >
                                     Log Out
                                 </NavLink>
                             </>
                         ) : (
-                            <NavLink
-                                to="/login"
-                                className={({ isActive }) => `px-3 py-1.5 text-sm font-medium rounded-md no-underline transition-colors ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-                            >
-                                Log In
-                            </NavLink>
+                            <NavLink to="/login" className={pillClass}>Log In</NavLink>
                         )}
                     </nav>
-
                 </div>
+
+                {isAuthenticated && user?.name && (
+                    <p className="pb-3 -mt-1 text-xs font-medium text-slate-500">
+                        Welcome back, <span className="font-semibold text-slate-700">{user.name}</span>
+                    </p>
+                )}
             </div>
         </header>
     );
