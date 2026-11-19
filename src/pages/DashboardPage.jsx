@@ -3,6 +3,8 @@ import { useTodo } from '../contexts/TodoContext';
 import { useTaskMeta } from '../contexts/TaskMetaContext';
 import { useCrm } from '../contexts/CrmContext';
 import { useReminders } from '../contexts/RemindersContext';
+import { useTime, formatDuration } from '../contexts/TimeContext';
+import PomodoroWidget from '../features/Time/PomodoroWidget';
 import {
     todayKey, lastNDayKeys, shortDayLabel, weekStartKey,
     toLocalKey, addDaysToKey, dueLabel,
@@ -104,6 +106,9 @@ export default function DashboardPage() {
     const { meta, getMeta } = useTaskMeta();
     const { contacts, stages, cards } = useCrm();
     const { overdueTasks, dueTodayTasks } = useReminders();
+    const { getFocusMinutes, getFocusMinutesWeek } = useTime();
+    const focusTodayMin = getFocusMinutes(todayKey());
+    const focusWeekMin = getFocusMinutesWeek();
 
     const tKey = todayKey();
     const counts = dayCountsFromMeta(meta);
@@ -133,6 +138,8 @@ export default function DashboardPage() {
         { label: 'Completed this week', value: completedThisWeek, sub: 'Monday – today' },
         { label: 'Completion rate', value: completionRate, sub: `${completedTotal} of ${totalTasks} tasks done` },
         { label: 'Day streak', value: streak, sub: streak === 1 ? 'day in a row' : 'days in a row' },
+        { label: 'Focus today', value: formatDuration(focusTodayMin * 60), sub: 'deep work time today' },
+        { label: 'Focus this week', value: formatDuration(focusWeekMin * 60), sub: 'deep work time, last 7 days' },
         { label: 'Contacts', value: contacts.length, sub: 'people in your CRM' },
         { label: 'Pipeline cards', value: cards.length, sub: pipelineSub || 'no stages yet' },
     ];
@@ -150,7 +157,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {stats.map((s, i) => (
                     <StatCard key={s.label} {...s} delay={(i % 3) + 1} />
                 ))}
@@ -170,6 +177,11 @@ export default function DashboardPage() {
                         No completions yet this week — check off a task and watch the bars grow.
                     </p>
                 )}
+            </div>
+
+            {/* Focus timer */}
+            <div className="animate-enter-3 mt-5">
+                <PomodoroWidget />
             </div>
 
             {/* Needs attention */}

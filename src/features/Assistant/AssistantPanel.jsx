@@ -69,7 +69,7 @@ export default function AssistantPanel() {
                     <div>
                         <h2 className="text-base font-extrabold tracking-tight text-slate-900">Assistant</h2>
                         <p className="text-xs font-medium text-slate-500">
-                            Workspace-aware · bring your own API key
+                            Knows your tasks, contacts & pipeline
                         </p>
                     </div>
                     <div className="flex items-center gap-1">
@@ -95,10 +95,11 @@ export default function AssistantPanel() {
                 <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-5 py-5">
                     {!hasKey && (
                         <div className="card animate-enter p-5">
-                            <p className="text-sm font-bold text-slate-900">Connect your AI key to start</p>
+                            <p className="text-sm font-bold text-slate-900">Meet your task assistant</p>
                             <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                                The assistant uses your own OpenAI-compatible API key. It is stored
-                                only in this browser and sent only to the API endpoint you configure.
+                                It sees your tasks, contacts, and pipeline — ask it to help you
+                                prioritize, break work down, or draft a follow-up. To turn it on,
+                                add your OpenAI API key in Settings (get one at platform.openai.com).
                             </p>
                             <Link to="/settings" onClick={closePanel} className="btn-primary mt-4 w-full px-4 py-2.5 text-sm">
                                 Open Settings
@@ -167,7 +168,7 @@ export default function AssistantPanel() {
                                     handleSubmit(e);
                                 }
                             }}
-                            placeholder={hasKey ? 'Ask about your tasks, contacts, pipeline…' : 'Add an API key in Settings to chat'}
+                            placeholder={hasKey ? 'Ask about your tasks, contacts, pipeline…' : 'Add your OpenAI key in Settings to chat'}
                             rows={2}
                             disabled={!hasKey || sending}
                             className="input resize-none"

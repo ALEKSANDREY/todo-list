@@ -1,15 +1,13 @@
 /* eslint-disable react-refresh/only-export-components -- context file exporting provider + hook */
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api, ApiError } from '../utils/api';
 
 const AuthContext = createContext();
 
-// Public demo session: the deployed demo boots straight into the task
-// workspace so visitors see the product immediately, no login required.
-// Demo traffic never touches the real API — TodoContext keeps demo tasks
-// in localStorage while this token is active.
-export const DEMO_TOKEN = 'demo-session-token';
-export const DEMO_USER_NAME = 'Demo User';
-
+// Real session auth against the Node backend. The server sets an httpOnly
+// cookie on login/register/demo; `me` revalidates the session on boot.
+// If the backend is unreachable on first load, backendDown is true and the
+// app shows a full-screen "start the server" state instead of fake data.
 export function useAuth() {
     const context = useContext(AuthContext);
     if (!context) {
@@ -19,71 +17,87 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-    // Boot straight into the public demo session; a real login replaces it.
-    const [email, setEmail] = useState(DEMO_USER_NAME);
-    const [token, setToken] = useState(DEMO_TOKEN);
+    const [user, setUser] = useState(null);
+    const [authChecked, setAuthChecked] = useState(false);
+    const [backendDown, setBackendDown] = useState(false);
+    const [authError, setAuthError] = useState('');
 
-    const login = async (userEmail, password) => {
+    const checkSession = useCallback(async () => {
         try {
-            const res = await fetch('/api/users/logon', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ email: userEmail, password }),
-            });
-            const data = await res.json();
-            if (res.status === 200 && data.name && data.csrfToken) {
-                setEmail(data.name);
-                setToken(data.csrfToken);
-                return { success: true };
+            const data = await api('/api/auth/me');
+            setUser(data.user);
+            setBackendDown(false);
+        } catch (err) {
+            if (err instanceof ApiError && err.status === 0) {
+                setBackendDown(true);
             } else {
-                return { success: false, error: `Authentication failed: ${data?.message}` };
+                setUser(null);
             }
-        } catch {
-            console.log('Network/CORS block detected on Vercel production. Activating presentation fallback login.');
-
-            // ✨ PRESENTATION FALLBACK: Bypasses the Vercel network error block safely
-            if (userEmail.trim() && password.trim()) {
-                setEmail(userEmail); // Sets the name to display your welcome text
-                setToken(DEMO_TOKEN); // Demo session: workspace works fully offline via localStorage
-                return { success: true };
-            }
-
-            return { success: false, error: 'Network error during login' };
-        }
-    };
-
-    const logout = async () => {
-        try {
-            if (token && token !== DEMO_TOKEN) {
-                await fetch('/api/users/logoff', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': token },
-                    credentials: 'include',
-                });
-            }
-        } catch (error) {
-            console.error('Logout error:', error);
         } finally {
-            setEmail('');
-            setToken('');
+            setAuthChecked(true);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        checkSession();
+    }, [checkSession]);
+
+    const runAuth = useCallback(async (fn) => {
+        setAuthError('');
+        try {
+            const data = await fn();
+            setUser(data.user);
+            setBackendDown(false);
+            return data.user;
+        } catch (err) {
+            if (err instanceof ApiError && err.status === 0) {
+                setBackendDown(true);
+                throw err;
+            }
+            setAuthError(err.message || 'Something went wrong. Please try again.');
+            throw err;
+        }
+    }, []);
+
+    const login = useCallback(
+        (email, password) => runAuth(() => api('/api/auth/login', { method: 'POST', body: { email, password } })),
+        [runAuth]
+    );
+
+    const register = useCallback(
+        (email, password, name) =>
+            runAuth(() => api('/api/auth/register', { method: 'POST', body: { email, password, name } })),
+        [runAuth]
+    );
+
+    const demo = useCallback(
+        () => runAuth(() => api('/api/auth/demo', { method: 'POST' })),
+        [runAuth]
+    );
+
+    const logout = useCallback(async () => {
+        try {
+            await api('/api/auth/logout', { method: 'POST' });
+        } catch {
+            // Cookie may already be gone — the local session ends regardless.
+        } finally {
+            setUser(null);
+        }
+    }, []);
 
     const value = {
-        email,
-        token,
-        isAuthenticated: !!token,
-        isDemoMode: token === DEMO_TOKEN,
+        user,
+        isAuthenticated: !!user,
+        authChecked,
+        backendDown,
+        authError,
+        setAuthError,
         login,
+        register,
+        demo,
         logout,
-        // Fallback placeholder to map against any component tracking a custom user state object
-        user: { name: email }
+        recheck: checkSession,
     };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

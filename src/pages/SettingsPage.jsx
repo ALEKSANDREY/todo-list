@@ -3,6 +3,8 @@ import { useAssistant, DEFAULT_ASSISTANT_SETTINGS } from '../contexts/AssistantC
 import { useReminders } from '../contexts/RemindersContext';
 import { useCrm } from '../contexts/CrmContext';
 import { useTaskMeta } from '../contexts/TaskMetaContext';
+import GcalSettingsContent from '../features/Gcal/GcalSettingsContent';
+import usePwaInstall from '../features/PWA/usePwaInstall';
 
 function Section({ eyebrow, title, children, delay = 1 }) {
     return (
@@ -35,10 +37,14 @@ function AssistantSettings() {
     };
 
     return (
-        <Section eyebrow="AI Assistant" title="Bring your own key" delay={1}>
-            <form onSubmit={handleSave} className="grid gap-4">
+        <Section eyebrow="AI Assistant" title="An assistant that knows your tasks" delay={1}>
+            <p className="text-sm leading-relaxed text-slate-600">
+                Chat with an assistant that sees your tasks, contacts, and pipeline — ask it
+                to help you prioritize, break big work down, or draft a follow-up.
+            </p>
+            <form onSubmit={handleSave} className="mt-4 grid gap-4">
                 <div>
-                    <label className="field-label" htmlFor="set-key">API key</label>
+                    <label className="field-label" htmlFor="set-key">OpenAI API key</label>
                     <input
                         id="set-key"
                         type="password"
@@ -49,32 +55,45 @@ function AssistantSettings() {
                         autoComplete="off"
                         spellCheck={false}
                     />
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                        To turn the assistant on, paste your key above. Get one at{' '}
+                        <span className="font-semibold text-slate-700">platform.openai.com</span> →{' '}
+                        API keys. The key is stored only in this browser.
+                    </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <label className="field-label" htmlFor="set-base">Base URL</label>
-                        <input
-                            id="set-base"
-                            type="url"
-                            className="input font-mono text-sm"
-                            value={form.baseUrl}
-                            onChange={set('baseUrl')}
-                            placeholder="https://api.openai.com/v1"
-                            spellCheck={false}
-                        />
+                <details className="rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3">
+                    <summary className="cursor-pointer text-xs font-bold text-slate-600 hover:text-slate-900">
+                        Advanced settings
+                    </summary>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label className="field-label" htmlFor="set-base">Service address</label>
+                            <input
+                                id="set-base"
+                                type="url"
+                                className="input font-mono text-sm"
+                                value={form.baseUrl}
+                                onChange={set('baseUrl')}
+                                placeholder="https://api.openai.com/v1"
+                                spellCheck={false}
+                            />
+                        </div>
+                        <div>
+                            <label className="field-label" htmlFor="set-model">Model</label>
+                            <input
+                                id="set-model"
+                                className="input font-mono text-sm"
+                                value={form.model}
+                                onChange={set('model')}
+                                placeholder="gpt-4o-mini"
+                                spellCheck={false}
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label className="field-label" htmlFor="set-model">Model</label>
-                        <input
-                            id="set-model"
-                            className="input font-mono text-sm"
-                            value={form.model}
-                            onChange={set('model')}
-                            placeholder="gpt-4o-mini"
-                            spellCheck={false}
-                        />
-                    </div>
-                </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                        Only change these if you use a different AI service (like a local model).
+                    </p>
+                </details>
                 <div className="flex flex-wrap items-center gap-2">
                     <button type="submit" className="btn-primary">Save settings</button>
                     {hasKey && (
@@ -88,11 +107,43 @@ function AssistantSettings() {
             <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-[0.8rem] leading-relaxed text-slate-600">
                 <p className="font-bold text-slate-800">Privacy note</p>
                 <p className="mt-1">
-                    Your key is stored <strong>only in this browser's localStorage</strong> and is sent{' '}
-                    <strong>only to the base URL you configure</strong> — never anywhere else. Any
-                    OpenAI-compatible endpoint works (OpenAI, Azure OpenAI, Ollama, LiteLLM, …).
+                    Your key is stored <strong>only in this browser</strong> and is sent{' '}
+                    <strong>only to the AI service you configure</strong> — never anywhere else.
                     Chats are not saved between visits.
                 </p>
+            </div>
+        </Section>
+    );
+}
+
+function GoogleCalendarSettings() {
+    return (
+        <Section eyebrow="Calendar" title="Google Calendar sync" delay={2}>
+            <GcalSettingsContent />
+        </Section>
+    );
+}
+
+function InstallAppSettings() {
+    const { canInstall, promptInstall } = usePwaInstall();
+
+    return (
+        <Section eyebrow="Phone app" title="Install on your phone" delay={5}>
+            <p className="text-sm leading-relaxed text-slate-600">
+                Add this workspace to your home screen for full-screen use, faster loading,
+                offline access, and its own app icon.
+            </p>
+            <div className="mt-4">
+                {canInstall ? (
+                    <button type="button" onClick={promptInstall} className="btn-primary">
+                        Install app
+                    </button>
+                ) : (
+                    <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-500">
+                        On your phone, open this page in Chrome and choose “Add to Home screen”
+                        from the browser menu. On iPhone, use Share → “Add to Home Screen” in Safari.
+                    </p>
+                )}
             </div>
         </Section>
     );
@@ -116,7 +167,7 @@ function NotificationSettings() {
     }[permission] || null;
 
     return (
-        <Section eyebrow="Reminders" title="Browser notifications" delay={2}>
+        <Section eyebrow="Reminders" title="Browser notifications" delay={3}>
             <div className="flex flex-wrap items-center gap-3">
                 {statusBadge}
                 {notificationsSupported && permission !== 'granted' && (
@@ -160,7 +211,7 @@ function DataSettings() {
     ];
 
     return (
-        <Section eyebrow="Workspace" title="Data management" delay={3}>
+        <Section eyebrow="Workspace" title="Data management" delay={4}>
             <div className="space-y-3">
                 {actions.map((a) => (
                     <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 p-4">
@@ -182,7 +233,7 @@ function DataSettings() {
                 ))}
             </div>
             <p className="mt-4 text-xs leading-relaxed text-slate-400">
-                Everything in this app is stored locally in your browser — no account, no server, no sync.
+                Everything in this app is stored in your account on the app server.
                 Clearing data here cannot be undone.
             </p>
         </Section>
@@ -198,13 +249,15 @@ export default function SettingsPage() {
                     <span className="gradient-text">Settings</span>
                 </h2>
                 <p className="mt-2 text-sm text-slate-500">
-                    AI key, notifications, and your local workspace data.
+                    Assistant, calendar sync, notifications, and your local workspace data.
                 </p>
             </div>
             <div className="space-y-5">
                 <AssistantSettings />
+                <GoogleCalendarSettings />
                 <NotificationSettings />
                 <DataSettings />
+                <InstallAppSettings />
             </div>
         </div>
     );
